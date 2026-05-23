@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Slate</title>
-  <link rel="icon" href="/favicon.png">
+    <link rel="icon" href="/favicon.png">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Lucide Icons for elegant minimalist UI -->
@@ -75,47 +75,48 @@
             -webkit-user-select: none !important;
             -webkit-touch-callout: none !important;
         }
-
-        /* Prevent gesture interference on drawing canvas */
-        #sketch-canvas {
-            touch-action: none;
-        }
     </style>
 </head>
 <body id="canvas" class="h-full w-full overflow-hidden relative font-sans bg-[#1c1c1c] text-[#f3f4f6] dark select-none">
 
     <!-- Ambient Mesh Gradients (Soft, slow floating) -->
-    <div id="ambient-container" class="absolute inset-0 overflow-hidden pointer-events-none transition-opacity duration-1000 opacity-100">
+    <div id="ambient-container" class="absolute inset-0 overflow-hidden pointer-events-none transition-opacity duration-1000 opacity-100 z-0">
         <div class="ambient-glow absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-amber-200 animate-[pulse_12s_infinite]"></div>
         <div class="ambient-glow absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-blue-200 animate-[pulse_16s_infinite_2s]"></div>
     </div>
 
     <!-- Active Layout Mode HUD Badge -->
-    <div class="fixed top-6 left-1/2 -translate-x-1/2 z-40">
-        <div id="hud-badge" class="px-4 py-1.5 rounded-full bg-white/80 dark:bg-black/40 border border-neutral-200/50 dark:border-neutral-800/50 backdrop-blur-md shadow-sm text-xs font-medium tracking-wide flex items-center gap-2 transition-all duration-300 transform scale-95 opacity-0">
+    <div class="fixed top-6 left-1/2 -translate-x-1/2 z-50">
+        <div id="hud-badge" class="px-4 py-1.5 rounded-full bg-white/80 dark:bg-black/40 border border-neutral-200/50 dark:border-neutral-800/50 backdrop-blur-md shadow-sm text-xs font-medium tracking-wide flex items-center gap-2 transition-all duration-300 transform scale-95 opacity-0 pointer-events-none">
             <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             <span id="hud-text" class="text-neutral-600 dark:text-neutral-300">Freeform Space</span>
         </div>
     </div>
 
-    <!-- Stylus / Drawing Layer Canvas with Touch-Action Prevention -->
-    <canvas id="sketch-canvas" class="absolute inset-0 w-full h-full pointer-events-none z-30" style="touch-action: none;"></canvas>
-
-    <!-- Main Workspace (Fully interactive click-and-type container) -->
-    <div id="workspace" class="absolute inset-0 w-full h-full p-8 md:p-24 overflow-y-auto no-scrollbar focus:outline-none z-20" onclick="focusWorkspace(event)">
+    <!-- Vertical Scrollable Workspace Only -->
+    <div id="workspace" class="absolute inset-0 w-full h-full overflow-y-auto overflow-x-hidden no-scrollbar focus:outline-none z-20" onclick="focusWorkspace(event)">
         
-        <!-- Welcome Prompt -->
-        <div id="onboarding" class="max-w-xl mx-auto mt-20 text-center pointer-events-none transition-opacity duration-1000 select-none">
-            <h1 class="font-serif text-3xl md:text-4xl italic text-neutral-400 mb-6 font-light">A clean space for your thoughts.</h1>
-            <p class="font-sans text-xs md:text-sm tracking-widest text-neutral-400/80 uppercase mb-2">Double-click anywhere to type. Drag elements to move.</p>
-            <p class="font-mono text-[10px] text-neutral-400/60 uppercase">Press <span class="px-1.5 py-0.5 rounded bg-neutral-900 text-white font-bold select-none">Tab</span> to cycle layouts &bull; Auto-saves locally</p>
-        </div>
+        <!-- Scalable Board -->
+        <div id="board" class="relative w-full" style="min-height: 5000px;">
+            
+            <!-- Welcome Prompt -->
+            <div id="onboarding" class="absolute top-32 left-1/2 -translate-x-1/2 w-[600px] text-center pointer-events-none transition-opacity duration-1000 select-none z-10">
+                <h1 class="font-serif text-3xl md:text-4xl italic text-neutral-400 mb-6 font-light">A clean space for your thoughts.</h1>
+                <p class="font-sans text-xs md:text-sm tracking-widest text-neutral-400/80 uppercase mb-2">Double-click anywhere to type. Drag elements to move.</p>
+                <p class="font-mono text-[10px] text-neutral-400/60 uppercase">Press <span class="px-1.5 py-0.5 rounded bg-neutral-900 text-white font-bold select-none">Tab</span> to cycle layouts &bull; Auto-saves locally</p>
+            </div>
 
-        <!-- Dynamic elements will be appended here -->
+            <!-- Stylus / Drawing Layer Canvas -->
+            <canvas id="sketch-canvas" class="absolute inset-0 pointer-events-none z-30" style="touch-action: none;"></canvas>
+            
+            <!-- Floating Cards Rendered Here -->
+            <div id="cards-container" class="absolute inset-0 z-20 pointer-events-none"></div>
+
+        </div>
     </div>
 
     <!-- Floating Sketch Sub-Toolbar (Visible only in drawing mode) -->
-    <div id="sketch-toolbar" class="fixed top-6 right-6 z-50 flex items-center gap-2 px-4 py-2 bg-white/85 dark:bg-neutral-900/90 backdrop-blur-md border border-neutral-200/50 dark:border-neutral-800/50 rounded-2xl shadow-lg transition-all duration-300 transform translate-y-[-20px] opacity-0 pointer-events-none">
+    <div id="sketch-toolbar" class="fixed top-6 right-6 z-[60] flex items-center gap-2 px-4 py-2 bg-white/85 dark:bg-neutral-900/90 backdrop-blur-md border border-neutral-200/50 dark:border-neutral-800/50 rounded-2xl shadow-lg transition-all duration-300 transform translate-y-[-20px] opacity-0 pointer-events-none">
         <!-- Undo/Redo -->
         <button onclick="undoStroke()" class="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg text-neutral-500 transition-colors" title="Undo (Ctrl+Z)">
             <i data-lucide="undo-2" class="w-4 h-4"></i>
@@ -125,7 +126,7 @@
         </button>
         <div class="h-4 w-px bg-neutral-300 dark:bg-neutral-700 mx-1"></div>
         <!-- Brush Color -->
-        <input type="color" id="brush-color" value="#a855f7" class="w-6 h-6 rounded-md border border-neutral-300 dark:border-neutral-700 cursor-pointer bg-transparent" title="Brush Color">
+        <input type="color" id="brush-color" value="#ffffff" class="w-6 h-6 rounded-md border border-neutral-300 dark:border-neutral-700 cursor-pointer bg-transparent" title="Brush Color">
         <!-- Stroke Tools -->
         <button onclick="setBrushTool('pen')" id="tool-pen" class="p-1.5 rounded-lg bg-neutral-100 dark:bg-neutral-800 text-indigo-500 transition-colors" title="Ink Pen (Sensitive)">
             <i data-lucide="pen-tool" class="w-4 h-4"></i>
@@ -149,7 +150,7 @@
     </div>
 
     <!-- Minimalist Floating Control Panel -->
-    <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 transform translate-y-2 hover:translate-y-0 opacity-40 hover:opacity-100 focus-within:opacity-100 focus-within:translate-y-0">
+    <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] transition-all duration-300 transform translate-y-2 hover:translate-y-0 opacity-40 hover:opacity-100 focus-within:opacity-100 focus-within:translate-y-0">
         <div class="flex items-center gap-4 px-6 py-3 rounded-full bg-white/70 dark:bg-black/40 backdrop-blur-md border border-neutral-200/50 dark:border-neutral-800/50 shadow-lg">
             
             <!-- Background Theme Toggles -->
@@ -182,12 +183,15 @@
             <button onclick="toggleAmbient()" id="ambient-btn" class="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded transition-colors text-emerald-500" title="Toggle Ambient Colors">
                 <i data-lucide="sparkles" class="w-4 h-4"></i>
             </button>
-
         </div>
     </div>
 
     <!-- Right-Click Context Menu -->
     <div id="custom-context-menu" class="hidden fixed z-[100] w-52 bg-white/95 dark:bg-[#121212]/95 backdrop-blur-md rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 shadow-2xl py-2 text-xs font-medium text-neutral-700 dark:text-neutral-200 select-none animate-in fade-in zoom-in-95 duration-100">
+        <button onclick="openNotebookModal()" class="w-full text-left px-4 py-2.5 hover:bg-neutral-100 dark:hover:bg-neutral-800/60 flex items-center gap-3 transition-colors">
+            <i data-lucide="book" class="w-4 h-4 text-amber-500"></i>
+            <span>Notebooks...</span>
+        </button>
         <button onclick="openCheckers()" class="w-full text-left px-4 py-2.5 hover:bg-neutral-100 dark:hover:bg-neutral-800/60 flex items-center gap-3 transition-colors">
             <i data-lucide="gamepad-2" class="w-4 h-4 text-emerald-500"></i>
             <span>Open checkers.page</span>
@@ -207,10 +211,29 @@
         </button>
     </div>
 
+    <!-- Notebook Selection Modal -->
+    <div id="notebook-modal" class="hidden fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center transition-opacity">
+        <div class="bg-white dark:bg-[#121212] w-full max-w-sm rounded-2xl p-6 shadow-2xl border border-neutral-200/60 dark:border-neutral-800/60 relative">
+            <h2 class="text-xl font-serif mb-4 dark:text-neutral-200">Your Notebooks</h2>
+            
+            <div id="notebook-list" class="flex flex-col gap-2 max-h-[300px] overflow-y-auto mb-4 no-scrollbar pr-2">
+                <!-- Dynamically populated notebook options -->
+            </div>
+            
+            <div class="flex gap-2 mt-4 pt-4 border-t border-neutral-200/50 dark:border-neutral-800/50">
+                <input type="text" id="new-notebook-name" placeholder="New Notebook Name..." class="flex-1 px-3 py-2.5 rounded-lg bg-neutral-100 dark:bg-[#1c1c1c] dark:text-white border-none outline-none text-sm placeholder-neutral-400">
+                <button onclick="createNewNotebook()" class="px-4 py-2 bg-indigo-500 text-white rounded-lg text-sm font-medium hover:bg-indigo-600 transition-colors shadow-sm">Create</button>
+            </div>
+            
+            <button onclick="closeNotebookModal()" class="absolute top-5 right-5 text-neutral-400 hover:text-neutral-800 dark:hover:text-white transition-colors">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+        </div>
+    </div>
+
     <!-- Small instructions helper in corner -->
-    <div class="fixed top-6 right-6 opacity-30 hover:opacity-100 transition-opacity text-[10px] tracking-widest uppercase flex items-center gap-2 z-40">
+    <div class="fixed top-6 right-6 opacity-30 hover:opacity-100 transition-opacity text-[10px] tracking-widest uppercase flex items-center gap-2 z-40 pointer-events-none">
         <span id="instruction-txt">Right-click for options</span>
-        <div class="w-1.5 h-1.5 rounded-full bg-current"></div>
     </div>
 
     <!-- Custom Toast Notification System -->
@@ -220,29 +243,32 @@
         // Init Lucide Icons
         lucide.createIcons();
 
-        // Canvas State Definition
+        // Database logic
+        let notebooks = JSON.parse(localStorage.getItem('canvas_notebooks')) || [{id: 'default', name: 'Main Sketchbook'}];
+        let activeNotebookId = localStorage.getItem('canvas_active_notebook_id') || 'default';
+
+        // Core Canvas State Definition
         const state = {
             theme: 'ink', 
             fontIndex: 0,
             fonts: ['font-sans', 'font-serif', 'font-mono'],
             ambientOn: true,
-            layoutMode: 0, // 0: Freeform, 1: Column Grid, 2: Chronological
-            blocks: [], // In-memory database of active text blocks
+            layoutMode: 0, 
+            blocks: [], 
             sketchMode: false,
-            drawings: [], // Array of path arrays { points: [{x, y, pressure}], strokeColor, strokeWidth, tool }
-            sessionDrawings: [], // Sketches made during current interactive session
+            drawings: [], 
+            sessionDrawings: [], 
             currentPath: null,
             inactivityTimeout: null,
             
-            // Modern Stylus Additions
-            brushTool: 'pen', // 'pen' | 'highlighter' | 'eraser'
+            // Stylus 
+            brushTool: 'pen', 
             usePressure: true,
             useStabilizer: true,
-            activeStylus: false, // Flag active stylus to initiate smart palm rejection
+            activeStylus: false,
             undoStack: [],
             redoStack: [],
             
-            // Mouse tracking fallback
             lastPointerType: 'mouse'
         };
 
@@ -256,23 +282,11 @@
 
         // --- Drawing Engine Setup ---
         const sketchCanvas = document.getElementById('sketch-canvas');
-        // Optimize rendering using desynchronized context hints where available
         const sCtx = sketchCanvas.getContext('2d', { desynchronized: true, willReadFrequently: false });
 
-        function resizeSketchCanvas() {
-            sketchCanvas.width = window.innerWidth;
-            sketchCanvas.height = window.innerHeight;
-            redrawSketchCanvas();
-        }
-
-        // Extremely robust calligraphic rendering engine with dynamic thickness interpolation
         function redrawSketchCanvas() {
             sCtx.clearRect(0, 0, sketchCanvas.width, sketchCanvas.height);
-            
-            // Draw completed paths
             state.drawings.forEach(path => drawSinglePath(sCtx, path));
-
-            // Draw current path in progress
             if (state.currentPath && state.currentPath.points.length > 0) {
                 drawSinglePath(sCtx, state.currentPath);
             }
@@ -307,7 +321,6 @@
                 return;
             }
 
-            // High Fidelity Segment Interpolation
             for (let i = 1; i < points.length; i++) {
                 const p1 = points[i - 1];
                 const p2 = points[i];
@@ -325,7 +338,6 @@
                 ctx.lineCap = 'round';
                 ctx.lineJoin = 'round';
                 
-                // Use quadratic midpoint interpolation for silky smooth lines
                 const midX = (p1.x + p2.x) / 2;
                 const midY = (p1.y + p2.y) / 2;
                 
@@ -361,15 +373,13 @@
 
             if (state.sketchMode) {
                 document.body.classList.add('sketching-mode');
-                sketchCanvas.style.pointerEvents = 'auto'; // Re-enable pointer capture for hardware layers
+                sketchCanvas.style.pointerEvents = 'auto'; 
                 sketchCanvas.classList.add('pointer-events-auto');
-                sketchCanvas.style.zIndex = "40"; // Elevate above workspace layout elements
                 workspace.classList.add('drawing-active');
                 
                 sketchBtn.classList.add('text-indigo-600', 'bg-indigo-50', 'dark:bg-indigo-950/40');
                 sketchBtnText.innerText = "Drawing Mode";
                 
-                // Show Sub-toolbar
                 toolbar.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-[-20px]');
                 toolbar.classList.add('opacity-100', 'pointer-events-auto', 'translate-y-0');
 
@@ -383,14 +393,12 @@
                 document.body.classList.remove('sketching-mode');
                 sketchCanvas.style.pointerEvents = 'none';
                 sketchCanvas.classList.remove('pointer-events-auto');
-                sketchCanvas.style.zIndex = "10";
                 workspace.classList.remove('drawing-active');
                 
                 sketchBtn.classList.remove('text-indigo-600', 'bg-indigo-50', 'dark:bg-indigo-950/40');
                 sketchBtn.classList.add('text-neutral-500');
                 sketchBtnText.innerText = "Sketch";
                 
-                // Hide Sub-toolbar
                 toolbar.classList.add('opacity-0', 'pointer-events-none', 'translate-y-[-20px]');
                 toolbar.classList.remove('opacity-100', 'pointer-events-auto', 'translate-y-0');
 
@@ -399,7 +407,6 @@
             }
         }
 
-        // Modern UI Stroke & Tool Controls
         function setBrushTool(toolName) {
             state.brushTool = toolName;
             document.querySelectorAll('#sketch-toolbar button[id^="tool-"]').forEach(btn => {
@@ -443,9 +450,8 @@
             }
         }
 
-        // Smart Adaptive Moving-Average Stabilizer for Pens
         let stabilizerPoints = [];
-        const stabilizerWeight = 0.65; // High performance damping factor
+        const stabilizerWeight = 0.65; 
 
         function processStabilizedPoint(x, y, rawPressure) {
             if (!state.useStabilizer) {
@@ -476,7 +482,10 @@
 
         function getPointerPos(e) {
             const rect = sketchCanvas.getBoundingClientRect();
-            return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+            return { 
+                x: e.clientX - rect.left, 
+                y: e.clientY - rect.top 
+            };
         }
 
         function onPointerDown(e) {
@@ -485,11 +494,9 @@
                 return;
             }
 
-            // Adaptive Palm Rejection: Prioritize active Stylus input over Touch gestures
             if (e.pointerType === 'pen') {
                 state.activeStylus = true;
             } else if (e.pointerType === 'touch' && state.activeStylus) {
-                // Ignore touching/palms if we are currently holding a digital stylus
                 e.preventDefault();
                 return;
             }
@@ -497,26 +504,22 @@
             e.preventDefault();
             sketchCanvas.setPointerCapture(e.pointerId);
             isDrawing = true;
-            stabilizerPoints = []; // Reset stabilizer state
+            stabilizerPoints = []; 
 
             const pos = getPointerPos(e);
             let brushColor = document.getElementById('brush-color').value;
             
-            // Auto Eraser hardware switch support
             let activeTool = state.brushTool;
             if (e.buttons === 32 || e.pointerType === 'eraser') {
                 activeTool = 'eraser';
             }
 
-            // Compute logical thickness values
             let strokeWidth = 5;
             if (activeTool === 'highlighter') strokeWidth = 24;
             if (activeTool === 'eraser') strokeWidth = 32;
 
-            // Clear Redo stack on new interaction
             state.redoStack = [];
 
-            // Read hardware pressure parameter
             let initialPressure = e.pressure;
             if (e.pointerType === 'mouse' && initialPressure === 0) initialPressure = 0.5;
 
@@ -535,7 +538,6 @@
         function onPointerMove(e) {
             if (!isDrawing || !state.currentPath) return;
 
-            // Enforce palm rejection
             if (e.pointerType === 'touch' && state.activeStylus) {
                 e.preventDefault();
                 return;
@@ -543,14 +545,12 @@
 
             e.preventDefault();
 
-            // Extract high-performance coalesced sensor updates
             const coalescedEvents = (typeof e.getCoalescedEvents === 'function') ? e.getCoalescedEvents() : [e];
             
             coalescedEvents.forEach(evt => {
                 const pos = getPointerPos(evt);
                 let currentPressure = evt.pressure;
 
-                // Handle standard mouse fallback constraints
                 if (evt.pointerType === 'mouse' && currentPressure === 0) {
                     currentPressure = evt.buttons > 0 ? 0.6 : 0.0;
                 }
@@ -571,7 +571,6 @@
                 state.drawings.push(state.currentPath);
                 state.sessionDrawings.push(state.currentPath);
                 
-                // Track actions for undo operations
                 state.undoStack.push({
                     type: 'stroke',
                     data: state.currentPath
@@ -582,19 +581,16 @@
             state.currentPath = null;
             redrawSketchCanvas();
 
-            // Reset active stylus state slowly
             if (e.pointerType === 'pen') {
                 setTimeout(() => { state.activeStylus = false; }, 800);
             }
         }
 
-        // Event hooks for high-fidelity pen systems
         sketchCanvas.addEventListener('pointerdown', onPointerDown, { passive: false });
         sketchCanvas.addEventListener('pointermove', onPointerMove, { passive: false });
         sketchCanvas.addEventListener('pointerup', onPointerUp, { passive: false });
         sketchCanvas.addEventListener('pointercancel', onPointerUp, { passive: false });
 
-        // Fallback for click events on elements
         window.addEventListener('dblclick', (e) => {
             if (state.sketchMode) return;
             spawnTextElement(e);
@@ -706,56 +702,121 @@
             showToast("Wrapped handwriting into Note Card!");
         }
 
-        // --- Local Storage Sync Engine ---
+        // --- Local Storage Sync Engine with Notebooks ---
         function saveLocalState() {
-            localStorage.setItem('canvas_blocks', JSON.stringify(state.blocks));
-            localStorage.setItem('canvas_drawings', JSON.stringify(state.drawings));
-            localStorage.setItem('canvas_theme', state.theme);
-            localStorage.setItem('canvas_fontIndex', state.fontIndex);
-            localStorage.setItem('canvas_ambient', state.ambientOn);
+            const data = {
+                blocks: state.blocks,
+                drawings: state.drawings,
+                theme: state.theme,
+                fontIndex: state.fontIndex,
+                ambientOn: state.ambientOn
+            };
+            localStorage.setItem(`canvas_data_${activeNotebookId}`, JSON.stringify(data));
         }
 
         function loadLocalState() {
-            const savedTheme = localStorage.getItem('canvas_theme') || 'ink';
-            const savedFontIndex = localStorage.getItem('canvas_fontIndex');
-            const savedAmbient = localStorage.getItem('canvas_ambient');
-
-            setTheme(savedTheme);
-            if (savedFontIndex) {
-                state.fontIndex = parseInt(savedFontIndex, 10);
-                const workspace = document.getElementById('workspace');
-                state.fonts.forEach(f => workspace.classList.remove(f));
-                workspace.classList.add(state.fonts[state.fontIndex]);
-            }
-            if (savedAmbient !== null) {
-                state.ambientOn = savedAmbient === 'true';
-                const ambient = document.getElementById('ambient-container');
-                if (!state.ambientOn) {
-                    ambient.style.opacity = '0';
-                    document.getElementById('ambient-btn').classList.remove('text-emerald-500');
-                }
-            }
-
-            const savedBlocks = localStorage.getItem('canvas_blocks');
-            if (savedBlocks) {
+            const dataStr = localStorage.getItem(`canvas_data_${activeNotebookId}`);
+            
+            if (dataStr) {
                 try {
-                    state.blocks = JSON.parse(savedBlocks);
+                    const data = JSON.parse(dataStr);
+                    state.blocks = data.blocks || [];
+                    state.drawings = data.drawings || [];
+                    
+                    setTheme(data.theme || 'ink');
+                    
+                    if (data.fontIndex !== undefined) {
+                        state.fontIndex = parseInt(data.fontIndex, 10);
+                        const workspace = document.getElementById('workspace');
+                        state.fonts.forEach(f => workspace.classList.remove(f));
+                        workspace.classList.add(state.fonts[state.fontIndex]);
+                    }
+
+                    if (data.ambientOn !== undefined) {
+                        state.ambientOn = data.ambientOn === true || data.ambientOn === 'true';
+                        const ambient = document.getElementById('ambient-container');
+                        const btn = document.getElementById('ambient-btn');
+                        if (!state.ambientOn) {
+                            ambient.style.opacity = '0';
+                            btn.classList.remove('text-emerald-500');
+                            btn.classList.add('text-neutral-500');
+                        } else {
+                            ambient.style.opacity = themes[state.theme].ambientOpacity;
+                            btn.classList.add('text-emerald-500');
+                            btn.classList.remove('text-neutral-500');
+                        }
+                    }
+
                     renderAllBlocks();
-                } catch (err) {
-                    console.error("Local storage blocks read error:", err);
-                }
-            }
-
-            const savedDrawings = localStorage.getItem('canvas_drawings');
-            if (savedDrawings) {
-                try {
-                    state.drawings = JSON.parse(savedDrawings);
                     redrawSketchCanvas();
                 } catch (err) {
-                    console.error("Local storage sketches read error:", err);
+                    console.error("Local storage load error:", err);
+                    setTheme('ink');
                 }
+            } else {
+                setTheme('ink');
             }
         }
+
+        // --- Notebook Modal System ---
+        function openNotebookModal() {
+            document.getElementById('custom-context-menu').classList.add('hidden');
+            document.getElementById('notebook-modal').classList.remove('hidden');
+            renderNotebookList();
+        }
+
+        function closeNotebookModal() {
+            document.getElementById('notebook-modal').classList.add('hidden');
+        }
+
+        function renderNotebookList() {
+            const list = document.getElementById('notebook-list');
+            list.innerHTML = '';
+            notebooks.forEach(nb => {
+                const item = document.createElement('div');
+                item.className = `flex items-center justify-between p-3 rounded-xl cursor-pointer transition-colors ${nb.id === activeNotebookId ? 'bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800' : 'hover:bg-neutral-100 dark:hover:bg-neutral-800/80'}`;
+                
+                const title = document.createElement('span');
+                title.className = `font-medium text-sm ${nb.id === activeNotebookId ? 'text-indigo-600 dark:text-indigo-400' : 'text-neutral-700 dark:text-neutral-300'}`;
+                title.innerText = nb.name;
+                
+                item.onclick = () => switchNotebook(nb.id);
+                item.appendChild(title);
+                list.appendChild(item);
+            });
+        }
+
+        function createNewNotebook() {
+            const nameInput = document.getElementById('new-notebook-name');
+            const name = nameInput.value.trim();
+            if (!name) return;
+            
+            const newId = 'nb_' + Date.now();
+            notebooks.push({id: newId, name});
+            localStorage.setItem('canvas_notebooks', JSON.stringify(notebooks));
+            nameInput.value = '';
+            switchNotebook(newId);
+        }
+
+        function switchNotebook(id) {
+            saveLocalState(); 
+            activeNotebookId = id;
+            localStorage.setItem('canvas_active_notebook_id', activeNotebookId);
+            
+            state.blocks = [];
+            state.drawings = [];
+            state.sessionDrawings = [];
+            state.undoStack = [];
+            state.redoStack = [];
+            document.getElementById('cards-container').innerHTML = '';
+            sCtx.clearRect(0, 0, sketchCanvas.width, sketchCanvas.height);
+            
+            loadLocalState();
+            closeNotebookModal();
+            showToast("Notebook Opened");
+            checkEmptyState();
+        }
+
 
         // --- Page Customization & Styling ---
         function setTheme(themeName) {
@@ -795,7 +856,6 @@
             saveLocalState();
         }
 
-        // --- Ambient Background Lights ---
         function toggleAmbient() {
             const ambient = document.getElementById('ambient-container');
             const btn = document.getElementById('ambient-btn');
@@ -816,8 +876,8 @@
 
         // --- Workspace and Notes Rendering ---
         function renderAllBlocks() {
-            const workspace = document.getElementById('workspace');
-            workspace.querySelectorAll('.canvas-card').forEach(el => el.remove());
+            const container = document.getElementById('cards-container');
+            container.innerHTML = '';
 
             if (state.blocks.length > 0) {
                 const onboarding = document.getElementById('onboarding');
@@ -832,11 +892,11 @@
         }
 
         function createDOMCard(block) {
-            const workspace = document.getElementById('workspace');
+            const container = document.getElementById('cards-container');
             
             const div = document.createElement('div');
             div.id = block.id;
-            div.className = "absolute group select-none min-w-[240px] max-w-[90%] md:max-w-[400px] rounded-xl p-4 bg-white/50 dark:bg-neutral-900/40 hover:bg-white/90 dark:hover:bg-neutral-900/80 hover:shadow-xl border border-neutral-200/40 dark:border-neutral-800/40 transition-shadow canvas-card";
+            div.className = "absolute group select-none min-w-[240px] max-w-[90%] md:max-w-[400px] rounded-xl p-4 bg-white/50 dark:bg-neutral-900/40 hover:bg-white/90 dark:hover:bg-neutral-900/80 hover:shadow-xl border border-neutral-200/40 dark:border-neutral-800/40 transition-shadow canvas-card pointer-events-auto";
             
             div.style.left = `${block.currentX}px`;
             div.style.top = `${block.currentY}px`;
@@ -879,7 +939,6 @@
                 saveLocalState();
             });
 
-            // Prevent textareas from consuming clicks meant for dragging
             textarea.addEventListener('click', (ev) => ev.stopPropagation());
             textarea.addEventListener('dblclick', (ev) => ev.stopPropagation());
 
@@ -887,7 +946,6 @@
             let startX, startY, origX, origY;
 
             div.addEventListener('mousedown', (ev) => {
-                // Ignore gestures/drags when in stylus sketchmode
                 if (state.sketchMode) return;
                 
                 if (ev.target === textarea || ev.target.closest('.control-button')) return;
@@ -959,7 +1017,7 @@
             div.appendChild(textarea);
             div.appendChild(delBtn);
             div.appendChild(dragHandle);
-            workspace.appendChild(div);
+            container.appendChild(div);
         }
 
         function spawnTextElement(e) {
@@ -970,20 +1028,20 @@
             const onboarding = document.getElementById('onboarding');
             if (onboarding) onboarding.style.opacity = '0';
 
-            const workspace = document.getElementById('workspace');
-            const rect = workspace.getBoundingClientRect();
+            const board = document.getElementById('board');
+            const rect = board.getBoundingClientRect();
             
-            const x = e.clientX - rect.left + workspace.scrollLeft - 100;
-            const y = e.clientY - rect.top + workspace.scrollTop - 20;
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
 
             const blockId = `block-${Date.now()}`;
             const newBlock = {
                 id: blockId,
                 text: '',
-                originalX: x,
-                originalY: y,
-                currentX: x,
-                currentY: y,
+                originalX: x - 100, // offset
+                originalY: y - 20,
+                currentX: x - 100,
+                currentY: y - 20,
                 createdAt: Date.now(),
                 width: '280px',
                 height: 'auto'
@@ -1004,8 +1062,7 @@
         }
 
         function checkEmptyState() {
-            const workspace = document.getElementById('workspace');
-            const elements = workspace.querySelectorAll('.canvas-card');
+            const elements = document.getElementById('cards-container').querySelectorAll('.canvas-card');
             if (elements.length === 0 && state.drawings.length === 0) {
                 const onboarding = document.getElementById('onboarding');
                 if (onboarding) onboarding.style.opacity = '1';
@@ -1016,11 +1073,11 @@
         const contextMenu = document.getElementById('custom-context-menu');
 
         window.addEventListener('contextmenu', (e) => {
-            if (state.sketchMode) return; // Prevent interference when sketching with stylus
+            if (state.sketchMode) return; 
             
             e.preventDefault();
             const menuWidth = 208;
-            const menuHeight = 180;
+            const menuHeight = 220;
             const posX = (e.clientX + menuWidth > window.innerWidth) ? window.innerWidth - menuWidth - 10 : e.clientX;
             const posY = (e.clientY + menuHeight > window.innerHeight) ? window.innerHeight - menuHeight - 10 : e.clientY;
 
@@ -1042,11 +1099,12 @@
 
         function exitTab() {
             contextMenu.classList.add('hidden');
+            
             try {
                 window.close();
-            } catch (err) {
-                showToast("Press Command+W (Mac) or Ctrl+W (PC) to exit");
-            }
+            } catch(e) {}
+            // Graceful fallback to exit immersive content
+            window.location.href = 'about:blank';
         }
 
         function clearCanvas() {
@@ -1056,10 +1114,10 @@
             state.sessionDrawings = [];
             state.undoStack = [];
             state.redoStack = [];
-            localStorage.removeItem('canvas_blocks');
-            localStorage.removeItem('canvas_drawings');
-            renderAllBlocks();
+            
+            document.getElementById('cards-container').innerHTML = '';
             redrawSketchCanvas();
+            saveLocalState();
             checkEmptyState();
             showToast("Canvas fully cleared");
         }
@@ -1072,19 +1130,56 @@
                 convertSessionDrawingsToCard();
             }
 
+            // Find minimal viewport bounding box
+            let minX = Infinity, minY = Infinity, maxX = 0, maxY = 0;
+
+            state.blocks.forEach(block => {
+                const domCard = document.getElementById(block.id);
+                if (domCard) {
+                    minX = Math.min(minX, block.currentX);
+                    minY = Math.min(minY, block.currentY);
+                    maxX = Math.max(maxX, block.currentX + domCard.offsetWidth);
+                    maxY = Math.max(maxY, block.currentY + domCard.offsetHeight);
+                }
+            });
+
+            state.drawings.forEach(path => {
+                path.points.forEach(pt => {
+                    minX = Math.min(minX, pt.x);
+                    minY = Math.min(minY, pt.y);
+                    maxX = Math.max(maxX, pt.x);
+                    maxY = Math.max(maxY, pt.y);
+                });
+            });
+
+            if (minX === Infinity) {
+                // Empty Board safety offset
+                minX = 0; minY = 0; maxX = 1000; maxY = 800;
+            }
+
+            const padding = 120;
+            minX = Math.max(0, minX - padding);
+            minY = Math.max(0, minY - padding);
+            maxX = maxX + padding;
+            maxY = maxY + padding;
+
+            const expW = maxX - minX;
+            const expH = maxY - minY;
+
             const canvasExport = document.createElement('canvas');
-            canvasExport.width = window.innerWidth * 2;
-            canvasExport.height = window.innerHeight * 2;
+            canvasExport.width = expW * 2;
+            canvasExport.height = expH * 2;
             const ctx = canvasExport.getContext('2d');
             ctx.scale(2, 2);
 
             const theme = themes[state.theme];
             ctx.fillStyle = theme.bg;
-            ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+            ctx.fillRect(0, 0, expW, expH);
 
-            state.drawings.forEach(path => {
-                drawSinglePath(ctx, path);
-            });
+            // Translate matrix locally to center drawings from coordinate map
+            ctx.translate(-minX, -minY);
+
+            state.drawings.forEach(path => drawSinglePath(ctx, path));
 
             state.blocks.forEach(block => {
                 const domCard = document.getElementById(block.id);
@@ -1098,6 +1193,7 @@
                 const width = domCard.offsetWidth || 280;
                 const height = domCard.offsetHeight || 100;
 
+                ctx.save();
                 ctx.shadowColor = 'rgba(0, 0, 0, 0.05)';
                 ctx.shadowBlur = 8;
                 ctx.shadowOffsetY = 4;
@@ -1116,10 +1212,7 @@
                 ctx.quadraticCurveTo(cardX, cardY, cardX + radius, cardY);
                 ctx.closePath();
                 ctx.fill();
-
-                ctx.shadowColor = 'transparent';
-                ctx.shadowBlur = 0;
-                ctx.shadowOffsetY = 0;
+                ctx.restore();
 
                 if (block.drawings && block.drawings.length > 0) {
                     block.drawings.forEach(path => {
@@ -1184,8 +1277,8 @@
         }
 
         function applyLayoutRules() {
-            const workspace = document.getElementById('workspace');
-            const width = workspace.clientWidth;
+            const boardElement = document.getElementById('board');
+            const viewWidth = boardElement.clientWidth;
             
             if (state.layoutMode === 0) {
                 state.blocks.forEach(block => {
@@ -1202,10 +1295,11 @@
             else if (state.layoutMode === 1) {
                 const cardWidth = 300;
                 const gap = 24;
-                const colsCount = Math.max(1, Math.floor((width - 64) / (cardWidth + gap)));
+                const usableWidth = Math.min(1200, viewWidth - 64);
+                const colsCount = Math.max(1, Math.floor(usableWidth / (cardWidth + gap)));
                 
-                const columnsHeights = Array(colsCount).fill(80);
-                const leftOffset = Math.max(32, (width - (colsCount * (cardWidth + gap) - gap)) / 2);
+                const columnsHeights = Array(colsCount).fill(120); // Start near the top
+                const leftOffset = Math.max(24, (viewWidth - ((colsCount * (cardWidth + gap)) - gap)) / 2);
 
                 state.blocks.forEach(block => {
                     const domCard = document.getElementById(block.id);
@@ -1230,16 +1324,16 @@
                 const sortedBlocks = [...state.blocks].sort((a, b) => a.createdAt - b.createdAt);
                 
                 const cardWidth = 460;
-                let currentY = 120;
+                let currentY = 120; // Start near the top
                 const gap = 32;
-                const posX = Math.max(24, (width - cardWidth) / 2);
+                const posX = Math.max(24, (viewWidth - cardWidth) / 2);
 
                 sortedBlocks.forEach(block => {
                     const domCard = document.getElementById(block.id);
                     if (domCard) {
                         domCard.style.left = `${posX}px`;
                         domCard.style.top = `${currentY}px`;
-                        domCard.style.width = `${Math.min(cardWidth, width - 48)}px`;
+                        domCard.style.width = `${Math.min(cardWidth, viewWidth - 48)}px`;
 
                         const measuredHeight = domCard.offsetHeight || 120;
                         currentY += measuredHeight + gap;
@@ -1320,7 +1414,6 @@
                 }
             }
 
-            // Global Undo / Redo keybind hooks (silently ignores if focused in input)
             if (e.ctrlKey || e.metaKey) {
                 if (e.key === 'z' || e.key === 'Z') {
                     if (document.activeElement && document.activeElement.tagName === 'TEXTAREA') return;
@@ -1336,21 +1429,27 @@
         });
 
         window.addEventListener('resize', () => {
-            resizeSketchCanvas();
+            const workspace = document.getElementById('workspace');
+            sketchCanvas.width = workspace.clientWidth;
+            sketchCanvas.height = 5000;
+            redrawSketchCanvas();
             if (state.layoutMode !== 0) {
                 applyLayoutRules();
             }
         });
 
         function focusWorkspace(e) {
-            if (e.target === document.getElementById('workspace')) {
+            if (e.target === document.getElementById('workspace') || e.target === document.getElementById('board')) {
                 document.activeElement?.blur();
             }
         }
 
         window.onload = function() {
+            const workspace = document.getElementById('workspace');
+            sketchCanvas.width = workspace.clientWidth;
+            sketchCanvas.height = 5000;
             loadLocalState();
-            resizeSketchCanvas();
+            workspace.scrollTop = 0;
         }
     </script>
 </body>
