@@ -1,0 +1,24 @@
+{
+  "name": "Slate Notes",
+  "short_name": "Slate",
+  "description": "A beautiful, minimalist ambient workspace for writing notes, infinite sketching, and organizing your thoughts.",
+  "start_url": "/",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#87CEEB",
+  "theme_color": "#87CEEB",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
