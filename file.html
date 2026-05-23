@@ -1,0 +1,2134 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>Slate - Collaborative</title>
+    <link class="rounded-full" rel="icon" href="/favicon.png" />
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons for elegant minimalist UI -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;1,400&family=Fira+Code:wght@300;400&display=swap");
+
+      .font-sans {
+        font-family: "Inter", sans-serif;
+      }
+      .font-serif {
+        font-family: "Playfair Display", serif;
+      }
+      .font-mono {
+        font-family: "Fira Code", monospace;
+      }
+
+      /* Custom selection color */
+      ::selection {
+        background: rgba(128, 128, 128, 0.15);
+      }
+
+      /* Smooth page transitions */
+      body {
+        transition: background-color 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+          color 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      /* Hide scrollbar but keep functionality */
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+
+      /* Ambient mesh animation */
+      .ambient-glow {
+        filter: blur(120px);
+        opacity: 0.15;
+        mix-blend-mode: screen;
+        pointer-events: none;
+        transition: all 1s ease;
+      }
+
+      /* Smooth transition for layout organization */
+      .canvas-card {
+        transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1),
+          left 0.5s cubic-bezier(0.2, 0.8, 0.2, 1),
+          top 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s ease,
+          box-shadow 0.3s ease;
+      }
+      .dragging {
+        transition: none !important;
+        z-index: 50;
+      }
+
+      /* Stylus Drawing Layer cursor styles */
+      .drawing-active {
+        cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>')
+            2 14,
+          crosshair !important;
+      }
+      .dark .drawing-active {
+        cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>')
+            2 14,
+          crosshair !important;
+      }
+
+      body.sketching-mode {
+        touch-action: none !important;
+        user-select: none !important;
+        -webkit-user-select: none !important;
+        -webkit-touch-callout: none !important;
+      }
+    </style>
+  </head>
+  <body
+    id="canvas"
+    class="h-full w-full overflow-hidden relative font-sans bg-[#1c1c1c] text-[#f3f4f6] dark select-none"
+  >
+    <!-- Ambient Mesh Gradients -->
+    <div
+      id="ambient-container"
+      class="absolute inset-0 overflow-hidden pointer-events-none transition-opacity duration-1000 opacity-100 z-0"
+    >
+      <div
+        class="ambient-glow absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-amber-200 animate-[pulse_12s_infinite]"
+      ></div>
+      <div
+        class="ambient-glow absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-blue-200 animate-[pulse_16s_infinite_2s]"
+      ></div>
+    </div>
+
+    <!-- Floating Sketchbook Settings button -->
+    <button
+      id="sketchbook-settings-btn"
+      onclick="openSketchbookSettings(event)"
+      class="fixed top-6 left-6 z-[60] p-2.5 bg-white/85 dark:bg-[#121212]/90 backdrop-blur-md border border-neutral-200/50 dark:border-neutral-800/50 rounded-xl shadow-lg transition-all duration-300 hover:scale-105 active:scale-95 hidden"
+      title="Settings Menu"
+    >
+      <i
+        data-lucide="settings"
+        class="w-5 h-5 text-neutral-600 dark:text-neutral-300"
+      ></i>
+    </button>
+
+    <!-- Active Layout Mode & Cloud Status HUD Badge -->
+    <div
+      class="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 flex-col pointer-events-none"
+    >
+      <div
+        id="hud-badge"
+        class="px-4 py-1.5 rounded-full bg-white/80 dark:bg-black/40 border border-neutral-200/50 dark:border-neutral-800/50 backdrop-blur-md shadow-sm text-xs font-medium tracking-wide flex items-center gap-2 transition-all duration-300 transform scale-95 opacity-0"
+      >
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span id="hud-text" class="text-neutral-600 dark:text-neutral-300"
+          >Freeform Space</span
+        >
+      </div>
+      <div
+        id="cloud-status"
+        class="px-3 py-1 rounded-full bg-white/60 dark:bg-black/30 backdrop-blur-md shadow-sm text-[10px] font-medium tracking-wide flex items-center gap-1.5 transition-opacity duration-300 opacity-0 text-neutral-500"
+      >
+        <i data-lucide="cloud-off" class="w-3 h-3" id="cloud-icon"></i>
+        <span id="cloud-text">Offline</span>
+      </div>
+    </div>
+
+    <!-- Vertical Scrollable Workspace -->
+    <div
+      id="workspace"
+      class="absolute inset-0 w-full h-full overflow-y-auto overflow-x-hidden no-scrollbar focus:outline-none z-20"
+      onclick="focusWorkspace(event)"
+    >
+      <div id="board" class="relative w-full" style="min-height: 5000px">
+        <div
+          id="onboarding"
+          class="absolute top-32 left-1/2 -translate-x-1/2 w-[600px] text-center pointer-events-none transition-opacity duration-1000 select-none z-10"
+        >
+          <h1
+            class="font-serif text-3xl md:text-4xl italic text-neutral-400 mb-6 font-light"
+          >
+            A clean space for your thoughts.
+          </h1>
+          <p
+            id="onboarding-text-guide"
+            class="font-sans text-xs md:text-sm tracking-widest text-neutral-400/80 uppercase mb-2"
+          >
+            Double-click anywhere to type. Drag elements to move.
+          </p>
+          <p class="font-mono text-[10px] text-neutral-400/60 uppercase">
+            Press
+            <span
+              class="px-1.5 py-0.5 rounded bg-neutral-900 text-white font-bold select-none"
+              >Tab</span
+            >
+            to cycle layouts &bull; Auto-saves locally
+          </p>
+        </div>
+
+        <canvas
+          id="sketch-canvas"
+          class="absolute inset-0 pointer-events-none z-30"
+          style="touch-action: none"
+        ></canvas>
+        <div
+          id="cards-container"
+          class="absolute inset-0 z-20 pointer-events-none"
+        ></div>
+
+        <div
+          id="doc-layout-container"
+          class="absolute inset-x-0 top-32 z-20 flex flex-col items-center justify-start px-4 md:px-12 hidden"
+        >
+          <div
+            class="w-full max-w-4xl bg-white dark:bg-neutral-900/90 shadow-2xl rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 p-8 md:p-16 h-auto text-left transition-all duration-300 relative mb-32"
+          >
+            <textarea
+              id="word-processor"
+              class="w-full min-h-[1000px] bg-transparent resize-none focus:outline-none border-none leading-relaxed text-base text-neutral-800 dark:text-neutral-100 placeholder-neutral-400/70 overflow-hidden"
+              placeholder="Start typing your document here..."
+            ></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Floating Sketch Sub-Toolbar -->
+    <div
+      id="sketch-toolbar"
+      class="fixed top-6 right-6 z-[60] flex items-center gap-2 px-4 py-2 bg-white/85 dark:bg-neutral-900/90 backdrop-blur-md border border-neutral-200/50 dark:border-neutral-800/50 rounded-2xl shadow-lg transition-all duration-300 transform translate-y-[-20px] opacity-0 pointer-events-none"
+    >
+      <button
+        onclick="undoStroke()"
+        class="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg text-neutral-500 transition-colors"
+        title="Undo (Ctrl+Z)"
+      >
+        <i data-lucide="undo-2" class="w-4 h-4"></i>
+      </button>
+      <button
+        onclick="redoStroke()"
+        class="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg text-neutral-500 transition-colors"
+        title="Redo (Ctrl+Y)"
+      >
+        <i data-lucide="redo-2" class="w-4 h-4"></i>
+      </button>
+      <div class="h-4 w-px bg-neutral-300 dark:bg-neutral-700 mx-1"></div>
+      <input
+        type="color"
+        id="brush-color"
+        value="#ffffff"
+        class="w-6 h-6 rounded-md border border-neutral-300 dark:border-neutral-700 cursor-pointer bg-transparent"
+        title="Brush Color"
+      />
+      <button
+        onclick="setBrushTool('pen')"
+        id="tool-pen"
+        class="p-1.5 rounded-lg bg-neutral-100 dark:bg-neutral-800 text-indigo-500 transition-colors"
+        title="Ink Pen"
+      >
+        <i data-lucide="pen-tool" class="w-4 h-4"></i>
+      </button>
+      <button
+        onclick="setBrushTool('highlighter')"
+        id="tool-highlighter"
+        class="p-1.5 rounded-lg text-neutral-500 transition-colors"
+        title="Highlighter"
+      >
+        <i data-lucide="highlighter" class="w-4 h-4"></i>
+      </button>
+      <button
+        onclick="setBrushTool('eraser')"
+        id="tool-eraser"
+        class="p-1.5 rounded-lg text-neutral-500 transition-colors"
+        title="Eraser"
+      >
+        <i data-lucide="eraser" class="w-4 h-4"></i>
+      </button>
+      <div class="h-4 w-px bg-neutral-300 dark:bg-neutral-700 mx-1"></div>
+      <button
+        onclick="toggleStabilizer()"
+        id="tool-stabilizer"
+        class="p-1.5 rounded-lg text-emerald-500 flex items-center gap-1"
+        title="Toggle Smart Smoothing Stabilizer"
+      >
+        <i data-lucide="activity" class="w-4 h-4"></i
+        ><span class="text-[9px] font-bold uppercase">Smooth</span>
+      </button>
+      <button
+        onclick="togglePressure()"
+        id="tool-pressure"
+        class="p-1.5 rounded-lg text-indigo-500 flex items-center gap-1"
+        title="Toggle Stylus Pressure Sensitivity"
+      >
+        <i data-lucide="swatch-book" class="w-4 h-4"></i
+        ><span class="text-[9px] font-bold uppercase">Pressure</span>
+      </button>
+    </div>
+
+    <!-- Minimalist Floating Control Panel -->
+    <div
+      class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] transition-all duration-300 transform translate-y-2 hover:translate-y-0 opacity-40 hover:opacity-100 focus-within:opacity-100 focus-within:translate-y-0"
+    >
+      <div
+        class="flex items-center gap-4 px-6 py-3 rounded-full bg-white/70 dark:bg-black/40 backdrop-blur-md border border-neutral-200/50 dark:border-neutral-800/50 shadow-lg"
+      >
+        <button
+          onclick="toggleFont()"
+          class="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded transition-colors text-neutral-500"
+          title="Switch Font"
+        >
+          <i data-lucide="type" class="w-4 h-4"></i>
+        </button>
+        <button
+          id="organize-btn"
+          onclick="cycleLayout()"
+          class="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded transition-colors text-indigo-500 flex items-center gap-1.5"
+          title="Cycle Layout Mode (Tab Key)"
+        >
+          <i id="layout-icon" data-lucide="layout-grid" class="w-4 h-4"></i
+          ><span
+            id="layout-btn-text"
+            class="text-[10px] font-bold uppercase tracking-wider hidden md:inline-block font-sans"
+            >Organize</span
+          >
+        </button>
+        <button
+          onclick="toggleSketchMode()"
+          id="sketch-btn"
+          class="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded transition-colors text-indigo-500 flex items-center gap-1.5"
+          title="Toggle Sketching / Stylus Mode"
+        >
+          <i data-lucide="pencil" class="w-4 h-4"></i
+          ><span
+            id="sketch-btn-text"
+            class="text-[10px] font-bold uppercase tracking-wider hidden md:inline-block font-sans"
+            >Sketch</span
+          >
+        </button>
+        <button
+          onclick="toggleAmbient()"
+          id="ambient-btn"
+          class="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded transition-colors text-emerald-500"
+          title="Toggle Ambient Colors"
+        >
+          <i data-lucide="sparkles" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Right-Click Context Menu -->
+    <div
+      id="custom-context-menu"
+      class="hidden fixed z-[100] w-64 bg-white/95 dark:bg-[#121212]/95 backdrop-blur-md rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 shadow-2xl py-2 text-xs font-medium text-neutral-700 dark:text-neutral-200 select-none animate-in fade-in zoom-in-95 duration-100"
+    >
+      <div
+        class="px-4 py-3 border-b border-neutral-200/50 dark:border-neutral-800/50 mb-1 flex items-center gap-3 bg-neutral-50 dark:bg-neutral-900/50"
+      >
+        <div
+          class="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold"
+          id="user-avatar"
+        >
+          ?
+        </div>
+        <div class="flex flex-col">
+          <span
+            id="user-display-name"
+            class="font-bold text-neutral-800 dark:text-neutral-200"
+            >Connecting...</span
+          >
+          <span class="text-[10px] text-neutral-500">Collaborative Mode</span>
+        </div>
+      </div>
+
+      <!-- Google Auth Section -->
+      <div
+        class="px-4 py-2 border-b border-neutral-200/50 dark:border-neutral-800/50 mb-1"
+      >
+        <button
+          id="auth-btn"
+          onclick="toggleAuth()"
+          class="w-full text-left flex items-center gap-3 text-indigo-500 hover:text-indigo-600 transition-colors font-semibold"
+        >
+          <svg
+            class="w-4 h-4 shadow-sm rounded-full"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+              fill="#4285F4"
+            />
+            <path
+              d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+              fill="#34A853"
+            />
+            <path
+              d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+              fill="#FBBC05"
+            />
+            <path
+              d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+              fill="#EA4335"
+            />
+          </svg>
+          <span id="auth-text">Sign in with Google</span>
+        </button>
+      </div>
+
+      <button
+        onclick="openNotebookModal()"
+        class="w-full text-left px-4 py-2.5 hover:bg-neutral-100 dark:hover:bg-neutral-800/60 flex items-center gap-3 transition-colors"
+      >
+        <i data-lucide="book" class="w-4 h-4 text-amber-500"></i
+        ><span>Notebooks...</span>
+      </button>
+      <button
+        id="share-menu-btn"
+        onclick="openShareModal()"
+        class="w-full text-left px-4 py-2.5 hover:bg-neutral-100 dark:hover:bg-neutral-800/60 flex items-center gap-3 transition-colors"
+      >
+        <i data-lucide="users" class="w-4 h-4 text-emerald-500"></i
+        ><span>Share & Collaborate</span>
+      </button>
+      <button
+        onclick="exportCanvas()"
+        class="w-full text-left px-4 py-2.5 hover:bg-neutral-100 dark:hover:bg-neutral-800/60 flex items-center gap-3 transition-colors"
+      >
+        <i data-lucide="image" class="w-4 h-4 text-indigo-500"></i
+        ><span>Save Canvas Image</span>
+      </button>
+      <button
+        onclick="clearCanvas()"
+        class="w-full text-left px-4 py-2.5 hover:bg-rose-50 dark:hover:bg-rose-950/20 text-rose-500 flex items-center gap-3 transition-colors"
+      >
+        <i data-lucide="trash-2" class="w-4 h-4"></i><span>Delete All</span>
+      </button>
+      <hr class="border-neutral-200/50 dark:border-neutral-800/50 my-1.5" />
+      <button
+        onclick="exitTab()"
+        class="w-full text-left px-4 py-2.5 hover:bg-neutral-100 dark:hover:bg-neutral-800/60 flex items-center gap-3 transition-colors"
+      >
+        <i data-lucide="x-circle" class="w-4 h-4 text-neutral-400"></i
+        ><span>Close Menu</span>
+      </button>
+    </div>
+
+    <!-- Notebook Selection Modal -->
+    <div
+      id="notebook-modal"
+      class="hidden fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center transition-opacity"
+    >
+      <div
+        class="bg-white dark:bg-[#121212] w-full max-w-md rounded-2xl p-6 shadow-2xl border border-neutral-200/60 dark:border-neutral-800/60 relative"
+      >
+        <h2 class="text-xl font-serif mb-4 dark:text-neutral-200">
+          Your Notebooks
+        </h2>
+        <p class="text-xs text-neutral-500 mb-3">
+          Notebooks stored in the cloud. Shared notebooks will appear here.
+        </p>
+
+        <div
+          id="notebook-list"
+          class="flex flex-col gap-2 max-h-[260px] overflow-y-auto mb-4 no-scrollbar pr-2"
+        >
+          <div class="text-xs text-neutral-400 p-2 text-center">
+            Loading notebooks...
+          </div>
+        </div>
+
+        <div
+          class="flex flex-col gap-3 mt-4 pt-4 border-t border-neutral-200/50 dark:border-neutral-800/50"
+        >
+          <input
+            type="text"
+            id="new-notebook-name"
+            placeholder="New Notebook Name..."
+            class="w-full px-3 py-2.5 rounded-lg bg-neutral-100 dark:bg-[#1c1c1c] dark:text-white border-none outline-none text-sm placeholder-neutral-400"
+          />
+          <div class="flex flex-col gap-1">
+            <label
+              class="text-[9px] uppercase tracking-wider text-neutral-400 font-bold font-sans"
+              >Notebook Type</label
+            >
+            <select
+              id="new-notebook-type"
+              class="w-full px-3 py-2 bg-neutral-100 dark:bg-[#1c1c1c] dark:text-white text-xs border-none rounded-lg outline-none cursor-pointer py-2.5"
+            >
+              <option value="adaptive">
+                Adaptive Space (Text & Auto-boxing Drawing)
+              </option>
+              <option value="document">
+                Infinite Page Doc (Google Doc Layout)
+              </option>
+              <option value="sketch">
+                Pure Sketchbook (Always Ink Drawing)
+              </option>
+            </select>
+          </div>
+          <button
+            onclick="createNewNotebook()"
+            class="w-full py-2.5 bg-indigo-500 text-white rounded-lg text-sm font-medium hover:bg-indigo-600 transition-colors shadow-sm"
+          >
+            Create Cloud Notebook
+          </button>
+        </div>
+
+        <button
+          onclick="closeModal('notebook-modal')"
+          class="absolute top-5 right-5 text-neutral-400 hover:text-neutral-800 dark:hover:text-white transition-colors"
+        >
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Collaboration/Share Modal -->
+    <div
+      id="share-modal"
+      class="hidden fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center transition-opacity"
+    >
+      <div
+        class="bg-white dark:bg-[#121212] w-full max-w-md rounded-2xl p-6 shadow-2xl border border-neutral-200/60 dark:border-neutral-800/60 relative"
+      >
+        <h2
+          class="text-xl font-serif mb-2 dark:text-neutral-200 flex items-center gap-2"
+        >
+          <i data-lucide="users" class="w-5 h-5 text-emerald-500"></i>
+          Collaborate
+        </h2>
+        <p class="text-xs text-neutral-500 mb-4">
+          Search for anyone using this app to share this specific notebook.
+        </p>
+
+        <div class="flex gap-2 mb-4 relative">
+          <input
+            type="text"
+            id="user-search-input"
+            placeholder="Search by name or ID..."
+            class="w-full px-3 py-2.5 rounded-lg bg-neutral-100 dark:bg-[#1c1c1c] dark:text-white border-none outline-none text-sm placeholder-neutral-400 font-sans"
+          />
+          <button
+            onclick="searchUsers()"
+            class="px-4 py-2.5 bg-indigo-500 text-white rounded-lg text-sm font-medium hover:bg-indigo-600 transition-colors font-sans font-bold"
+          >
+            Search
+          </button>
+        </div>
+
+        <div
+          id="user-search-results"
+          class="flex flex-col gap-2 max-h-[180px] overflow-y-auto mb-4 no-scrollbar border border-neutral-100 dark:border-neutral-800 rounded-lg p-2 hidden"
+        >
+          <!-- Search results go here -->
+        </div>
+
+        <div
+          class="pt-4 border-t border-neutral-200/50 dark:border-neutral-800/50"
+        >
+          <h3
+            class="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-3 font-sans"
+          >
+            Shared With
+          </h3>
+          <div
+            id="shared-users-list"
+            class="flex flex-col gap-2 max-h-[150px] overflow-y-auto no-scrollbar"
+          >
+            <p class="text-xs text-neutral-500">Loading collaborators...</p>
+          </div>
+        </div>
+
+        <button
+          onclick="closeModal('share-modal')"
+          class="absolute top-5 right-5 text-neutral-400 hover:text-neutral-800 dark:hover:text-white transition-colors"
+        >
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Notification System -->
+    <div
+      id="toast-container"
+      class="fixed bottom-24 right-6 z-[110] flex flex-col gap-2 pointer-events-none"
+    ></div>
+
+    <!-- Firebase Logic as a Module -->
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+      import {
+        getAuth,
+        signInWithPopup,
+        signInWithRedirect,
+        getRedirectResult,
+        signOut,
+        signInAnonymously,
+        onAuthStateChanged,
+        GoogleAuthProvider,
+      } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+      import {
+        getFirestore,
+        doc,
+        setDoc,
+        collection,
+        onSnapshot,
+        updateDoc,
+        getDocs,
+      } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+      lucide.createIcons();
+
+      // ==========================================
+      // 1. PRODUCTION FIREBASE CONFIGURATION
+      // Replace the placeholder values below with your actual Firebase web config.
+      // Get this from: Firebase Console -> Project Settings -> General -> Your Apps.
+      // ==========================================
+      const firebaseConfig = {
+        apiKey: "AIzaSyBXFX0ajlPdx1aFQgfN7wUPROmu7UvrOMw",
+        authDomain: "tumer-ecadf.firebaseapp.com",
+        projectId: "tumer-ecadf",
+        storageBucket: "tumer-ecadf.firebasestorage.app",
+        messagingSenderId: "909597748432",
+        appId: "1:909597748432:web:e8d56f65af0afd8863c2d5",
+      };
+
+      // Unique identifier to prevent partition overlaps on shared database servers
+      const appId = "slate-collaborative-production-app";
+
+      let app, auth, db;
+      let currentUser = null;
+      let isSyncingFromCloud = false;
+      let unsubscribeActiveNotebook = null;
+      let activeNotebookId =
+        localStorage.getItem("canvas_active_notebook_id") || "default-nb";
+
+      // State definition
+      const state = (window.slateState = {
+        fontIndex: 0,
+        fonts: ["font-sans", "font-serif", "font-mono"],
+        ambientOn: true,
+        layoutMode: 0,
+        blocks: [],
+        sketchMode: false,
+        drawings: [],
+        sessionDrawings: [],
+        currentPath: null,
+        documentText: "",
+        brushTool: "pen",
+        usePressure: true,
+        useStabilizer: true,
+        activeStylus: false,
+        undoStack: [],
+        redoStack: [],
+        notebooksList: [],
+      });
+
+      // Check if configuration is set
+      const isConfigValid =
+        firebaseConfig.apiKey &&
+        firebaseConfig.apiKey !== "YOUR_FIREBASE_API_KEY";
+
+      if (isConfigValid) {
+        try {
+          app = initializeApp(firebaseConfig);
+          auth = getAuth(app);
+          db = getFirestore(app);
+
+          // Handle redirect result if signed in via redirect on load
+          getRedirectResult(auth)
+            .then((result) => {
+              if (result && result.user) {
+                showToast(`Signed in as ${result.user.displayName}`);
+              }
+            })
+            .catch((err) => {
+              console.error("Redirect auth check failed", err);
+            });
+
+          // Rule 3: Auth first before any Firestore operations
+          const initAuth = async () => {
+            try {
+              await signInAnonymously(auth);
+            } catch (err) {
+              console.error("Auth failed", err);
+              showToast("Authentication fallback running.");
+            }
+          };
+          initAuth();
+
+          onAuthStateChanged(auth, async (user) => {
+            currentUser = user;
+            if (user) {
+              const isAnon = user.isAnonymous;
+              updateCloudStatus(isAnon ? "Connected (Guest)" : "Connected");
+
+              // Display details
+              const displayName = isAnon
+                ? "Guest"
+                : user.displayName || `User ${user.uid.substring(0, 4)}`;
+              document.getElementById("user-display-name").innerText =
+                displayName;
+              document.getElementById("user-avatar").innerText = displayName
+                .charAt(0)
+                .toUpperCase();
+
+              const authText = document.getElementById("auth-text");
+              if (authText) {
+                authText.innerText = isAnon
+                  ? "Sign in with Google"
+                  : "Sign Out";
+              }
+
+              // Register user directory profile (Rule 1: Strict paths)
+              const userRef = doc(
+                db,
+                "artifacts",
+                appId,
+                "public",
+                "data",
+                "users",
+                user.uid
+              );
+              await setDoc(
+                userRef,
+                {
+                  uid: user.uid,
+                  name: displayName,
+                  email: isAnon
+                    ? "Anonymous Guest"
+                    : user.email || "Google Account",
+                  lastActive: Date.now(),
+                },
+                { merge: true }
+              );
+
+              listenToAllNotebooks();
+            } else {
+              try {
+                await signInAnonymously(auth);
+              } catch (e) {
+                console.error("No credentials available.", e);
+              }
+            }
+          });
+        } catch (err) {
+          console.error("Initialization error", err);
+          showToast("Firebase Config error. Check script parameters.");
+        }
+      } else {
+        console.warn(
+          "Firebase config block contains placeholder values. Running in offline/local storage mode."
+        );
+        setTimeout(() => {
+          showToast(
+            "Please open the file and replace 'YOUR_FIREBASE_API_KEY' with your credentials!"
+          );
+        }, 1500);
+      }
+
+      // --- AUTH TOGGLE FOR MANUAL GOOGLE AUTH ---
+      window.toggleAuth = () => {
+        document.getElementById("custom-context-menu").classList.add("hidden");
+        if (!auth) {
+          showToast("Collaboration features offline.");
+          return;
+        }
+
+        if (currentUser && !currentUser.isAnonymous) {
+          signOut(auth)
+            .then(() => {
+              showToast("Signed out. Switched back to Guest.");
+            })
+            .catch((err) => {
+              showToast("Sign out failed: " + err.message);
+            });
+        } else {
+          const provider = new GoogleAuthProvider();
+          showToast("Opening Google Auth...");
+
+          signInWithPopup(auth, provider)
+            .then((result) => {
+              showToast(`Signed in as ${result.user.displayName}`);
+            })
+            .catch((err) => {
+              console.warn(
+                "Popup blocked or not supported. Trying redirect...",
+                err
+              );
+              if (
+                err.code === "auth/popup-blocked" ||
+                err.code === "auth/operation-not-supported-in-this-environment"
+              ) {
+                signInWithRedirect(auth, provider).catch((rErr) => {
+                  showToast("Sign in failed: " + rErr.message);
+                });
+              } else {
+                showToast("Authentication failed: " + err.message);
+              }
+            });
+        }
+      };
+
+      // --- CLOUD SYNCING LOGIC ---
+
+      function listenToAllNotebooks() {
+        if (!currentUser || !db) return; // Guard Firestore operations
+        const nbColRef = collection(
+          db,
+          "artifacts",
+          appId,
+          "public",
+          "data",
+          "notebooks"
+        );
+
+        // Listen to public notebooks using simple, clean collection snapshots (Rule 2)
+        onSnapshot(
+          nbColRef,
+          (snapshot) => {
+            const available = [];
+            snapshot.forEach((docSnap) => {
+              const data = docSnap.data();
+              if (
+                data.owner === currentUser.uid ||
+                (data.collaborators &&
+                  data.collaborators.includes(currentUser.uid))
+              ) {
+                available.push({ id: docSnap.id, ...data });
+              }
+            });
+
+            if (available.length === 0) {
+              window.createNewNotebook(
+                "Main Sketchbook",
+                "adaptive",
+                "default-nb"
+              );
+            } else {
+              state.notebooksList = available;
+              if (!available.find((n) => n.id === activeNotebookId)) {
+                switchNotebook(available[0].id);
+              } else {
+                if (!unsubscribeActiveNotebook)
+                  switchNotebook(activeNotebookId);
+              }
+              renderNotebookListUI();
+            }
+          },
+          (err) => {
+            console.error("Notebook list syncing issue", err);
+          }
+        );
+      }
+
+      window.switchNotebook = (id) => {
+        if (unsubscribeActiveNotebook) {
+          unsubscribeActiveNotebook();
+          unsubscribeActiveNotebook = null;
+        }
+        activeNotebookId = id;
+        localStorage.setItem("canvas_active_notebook_id", activeNotebookId);
+
+        state.blocks = [];
+        state.drawings = [];
+        state.documentText = "";
+        document.getElementById("cards-container").innerHTML = "";
+
+        if (db) {
+          // Rule 1 Compliance: Strict path format
+          const nbDocRef = doc(
+            db,
+            "artifacts",
+            appId,
+            "public",
+            "data",
+            "notebooks",
+            id
+          );
+          unsubscribeActiveNotebook = onSnapshot(
+            nbDocRef,
+            (docSnap) => {
+              if (isSyncingFromCloud) return;
+
+              if (docSnap.exists()) {
+                isSyncingFromCloud = true;
+                const data = docSnap.data();
+                state.blocks = data.blocks || [];
+                state.drawings = data.drawings || [];
+                state.documentText = data.documentText || "";
+
+                if (getActiveNotebookType() === "document") {
+                  const wp = document.getElementById("word-processor");
+                  if (
+                    wp.value !== state.documentText &&
+                    document.activeElement !== wp
+                  ) {
+                    wp.value = state.documentText;
+                    adjustWordProcessorHeight();
+                  }
+                } else {
+                  renderAllBlocks();
+                  redrawSketchCanvas();
+                }
+                setTimeout(() => {
+                  isSyncingFromCloud = false;
+                }, 300);
+                loadSharedUsersList(data.collaborators || []);
+              }
+            },
+            (error) => showToast("Connection updated")
+          );
+        } else {
+          loadLocalState();
+        }
+
+        closeModal("notebook-modal");
+        applyNotebookTypeSettings();
+        showToast("Notebook Opened");
+      };
+
+      window.saveStateToCloud = () => {
+        const localData = {
+          blocks: state.blocks,
+          drawings: state.drawings,
+          fontIndex: state.fontIndex,
+          ambientOn: state.ambientOn,
+          documentText: state.documentText,
+        };
+        localStorage.setItem(
+          `canvas_data_${activeNotebookId}`,
+          JSON.stringify(localData)
+        );
+
+        if (!currentUser || !db || isSyncingFromCloud) return;
+
+        isSyncingFromCloud = true;
+        // Rule 1: Strict path storage
+        const nbDocRef = doc(
+          db,
+          "artifacts",
+          appId,
+          "public",
+          "data",
+          "notebooks",
+          activeNotebookId
+        );
+        setDoc(
+          nbDocRef,
+          {
+            blocks: state.blocks,
+            drawings: state.drawings,
+            documentText: state.documentText,
+            lastUpdated: Date.now(),
+          },
+          { merge: true }
+        )
+          .catch((err) => console.error("Could not sync updates", err))
+          .finally(() => {
+            setTimeout(() => {
+              isSyncingFromCloud = false;
+            }, 300);
+          });
+      };
+
+      window.createNewNotebook = async (
+        nameOverride = null,
+        typeOverride = null,
+        idOverride = null
+      ) => {
+        const nameInput = document.getElementById("new-notebook-name");
+        const name =
+          nameOverride ||
+          (nameInput ? nameInput.value.trim() : "") ||
+          "Untitled Notebook";
+        const type =
+          typeOverride || document.getElementById("new-notebook-type").value;
+        const newId = idOverride || `nb_${Date.now()}`;
+
+        if (db && currentUser) {
+          // Rule 1: Strict collection paths
+          const nbDocRef = doc(
+            db,
+            "artifacts",
+            appId,
+            "public",
+            "data",
+            "notebooks",
+            newId
+          );
+          await setDoc(nbDocRef, {
+            name: name,
+            type: type,
+            owner: currentUser.uid,
+            collaborators: [],
+            blocks: [],
+            drawings: [],
+            documentText: "",
+            createdAt: Date.now(),
+          });
+        } else {
+          notebooks.push({ id: newId, name: name, type: type });
+          localStorage.setItem("canvas_notebooks", JSON.stringify(notebooks));
+          switchNotebook(newId);
+        }
+
+        if (nameInput) nameInput.value = "";
+        showToast("Notebook Created!");
+      };
+
+      // --- DIRECTORY COLLABORATION SEARCH ---
+      window.searchUsers = async () => {
+        if (!db) {
+          showToast(
+            "Search is offline. Enter Firebase Config at top of index.html!"
+          );
+          return;
+        }
+        const query = document
+          .getElementById("user-search-input")
+          .value.toLowerCase();
+        const resultsBox = document.getElementById("user-search-results");
+        resultsBox.innerHTML =
+          '<p class="text-xs text-neutral-500 p-2">Searching directory...</p>';
+        resultsBox.classList.remove("hidden");
+
+        const usersRef = collection(
+          db,
+          "artifacts",
+          appId,
+          "public",
+          "data",
+          "users"
+        );
+
+        try {
+          // Rule 2 Compliance: Fetch plain list of users from public directory & filter inside client memory.
+          const snap = await getDocs(usersRef);
+          resultsBox.innerHTML = "";
+          let found = false;
+
+          const activeNb = state.notebooksList.find(
+            (n) => n.id === activeNotebookId
+          );
+          const currentCollabs = activeNb ? activeNb.collaborators || [] : [];
+
+          snap.forEach((docSnap) => {
+            const user = docSnap.data();
+            const uid = docSnap.id;
+            if (uid === currentUser?.uid) return;
+
+            const name = (user.name || "").toLowerCase();
+            const email = (user.email || "").toLowerCase();
+            const idMatch = uid.toLowerCase();
+
+            if (
+              !query ||
+              name.includes(query) ||
+              email.includes(query) ||
+              idMatch.includes(query)
+            ) {
+              found = true;
+              const isShared = currentCollabs.includes(uid);
+              const el = document.createElement("div");
+              el.className =
+                "flex items-center justify-between p-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md border border-neutral-100 dark:border-neutral-800/50";
+              el.innerHTML = `
+                            <div class="flex flex-col">
+                                <span class="text-xs font-bold dark:text-white font-sans">${
+                                  user.name
+                                }</span>
+                                <span class="text-[9px] text-neutral-500 font-mono font-sans">ID: ${uid.substring(
+                                  0,
+                                  6
+                                )}...</span>
+                            </div>
+                            <button onclick="shareNotebookWith('${uid}')" class="px-3 py-1.5 ${
+                isShared
+                  ? "bg-emerald-500/20 text-emerald-600"
+                  : "bg-indigo-500 text-white hover:bg-indigo-600"
+              } text-[10px] rounded-md transition-colors font-sans font-bold uppercase tracking-wider" ${
+                isShared ? "disabled" : ""
+              }>
+                                ${isShared ? "Added" : "Add"}
+                            </button>
+                        `;
+              resultsBox.appendChild(el);
+            }
+          });
+          if (!found)
+            resultsBox.innerHTML = `<p class="text-xs text-neutral-500 p-2">No users match your search.</p>`;
+        } catch (err) {
+          console.error("User search failed", err);
+          resultsBox.innerHTML = `<p class="text-xs text-rose-500 p-2">Error searching.</p>`;
+        }
+      };
+
+      window.shareNotebookWith = async (targetUid) => {
+        if (!db || !currentUser) return;
+        const nbDocRef = doc(
+          db,
+          "artifacts",
+          appId,
+          "public",
+          "data",
+          "notebooks",
+          activeNotebookId
+        );
+        const activeNb = state.notebooksList.find(
+          (n) => n.id === activeNotebookId
+        );
+
+        if (activeNb && activeNb.owner !== currentUser.uid) {
+          showToast("Only the owner can add collaborators.");
+          return;
+        }
+
+        const currentCollabs = activeNb ? activeNb.collaborators || [] : [];
+        if (!currentCollabs.includes(targetUid)) {
+          currentCollabs.push(targetUid);
+          await updateDoc(nbDocRef, { collaborators: currentCollabs });
+          showToast("User added successfully!");
+          searchUsers();
+        }
+      };
+
+      function loadSharedUsersList(collaboratorUids) {
+        const list = document.getElementById("shared-users-list");
+        if (!db) {
+          list.innerHTML = `<p class="text-[10px] text-neutral-500 italic p-2 rounded-lg text-center">Local standalone mode active.</p>`;
+          return;
+        }
+        if (collaboratorUids.length === 0) {
+          list.innerHTML = `<p class="text-[10px] text-neutral-500 italic p-2 border border-dashed border-neutral-300 dark:border-neutral-800 rounded-lg text-center">Only you have access to this notebook.</p>`;
+          return;
+        }
+
+        const usersRef = collection(
+          db,
+          "artifacts",
+          appId,
+          "public",
+          "data",
+          "users"
+        );
+        onSnapshot(
+          usersRef,
+          (snap) => {
+            list.innerHTML = "";
+            snap.forEach((docSnap) => {
+              if (collaboratorUids.includes(docSnap.id)) {
+                const user = docSnap.data();
+                const el = document.createElement("div");
+                el.className =
+                  "text-xs px-3 py-2 bg-neutral-100 dark:bg-neutral-800/60 rounded-md dark:text-neutral-300 flex items-center justify-between";
+                el.innerHTML = `
+                            <div class="flex items-center gap-2"><i data-lucide="user" class="w-3 h-3 text-emerald-500"></i> <span class="font-bold">${user.name}</span></div>
+                            <span class="text-[9px] uppercase tracking-widest opacity-50 font-semibold">Editor</span>
+                        `;
+                list.appendChild(el);
+              }
+            });
+            lucide.createIcons();
+          },
+          (err) => {
+            console.error("Could not load users directory lists", err);
+          }
+        );
+      }
+
+      // --- DOM / LAYOUT UTILS ---
+      function getActiveNotebookType() {
+        if (!isConfigValid) {
+          const active = notebooks.find((nb) => nb.id === activeNotebookId);
+          return active ? active.type || "adaptive" : "adaptive";
+        }
+        const active = state.notebooksList.find(
+          (nb) => nb.id === activeNotebookId
+        );
+        return active ? active.type || "adaptive" : "adaptive";
+      }
+
+      function updateCloudStatus(status) {
+        const cloudStatus = document.getElementById("cloud-status");
+        const cloudIcon = document.getElementById("cloud-icon");
+        const cloudText = document.getElementById("cloud-text");
+        cloudStatus.classList.remove("opacity-0");
+        cloudIcon.setAttribute("data-lucide", "cloud-lightning");
+        cloudIcon.classList.add("text-indigo-500");
+        cloudText.innerText = status;
+        lucide.createIcons();
+      }
+
+      function renderNotebookListUI() {
+        const list = document.getElementById("notebook-list");
+        list.innerHTML = "";
+
+        const sourceList = isConfigValid ? state.notebooksList : notebooks;
+
+        sourceList.forEach((nb) => {
+          const item = document.createElement("div");
+          item.className = `flex flex-col gap-1.5 p-3 rounded-xl cursor-pointer transition-colors ${
+            nb.id === activeNotebookId
+              ? "bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800"
+              : "hover:bg-neutral-100 dark:hover:bg-neutral-800/80"
+          }`;
+
+          const header = document.createElement("div");
+          header.className =
+            "flex items-center justify-between pointer-events-none";
+
+          const title = document.createElement("span");
+          title.className = `font-bold text-sm ${
+            nb.id === activeNotebookId
+              ? "text-indigo-600 dark:text-indigo-400"
+              : "text-neutral-700 dark:text-neutral-300"
+          }`;
+          title.innerText = nb.name;
+
+          const badge = document.createElement("span");
+          badge.className =
+            "text-[9px] px-1.5 py-0.5 rounded uppercase font-bold tracking-wider";
+          const type = nb.type || "adaptive";
+          if (type === "document") {
+            badge.innerText = "Page Doc";
+            badge.className += " bg-emerald-100 text-emerald-600";
+          } else if (type === "sketch") {
+            badge.innerText = "Sketchbook";
+            badge.className += " bg-purple-100 text-purple-600";
+          } else {
+            badge.innerText = "Adaptive";
+            badge.className += " bg-amber-100 text-amber-600";
+          }
+
+          header.appendChild(title);
+          header.appendChild(badge);
+          item.appendChild(header);
+
+          if (nb.owner && nb.owner !== currentUser?.uid) {
+            const sharedBadge = document.createElement("div");
+            sharedBadge.className =
+              "text-[9px] text-emerald-500 font-medium flex items-center gap-1 mt-1";
+            sharedBadge.innerHTML = `<i data-lucide="users" class="w-3 h-3"></i> Shared notebook`;
+            item.appendChild(sharedBadge);
+          }
+
+          item.onclick = () => switchNotebook(nb.id);
+          list.appendChild(item);
+        });
+        lucide.createIcons();
+      }
+
+      // Exposing Global Interface triggers
+      window.openShareModal = () => {
+        document.getElementById("custom-context-menu").classList.add("hidden");
+        document.getElementById("share-modal").classList.remove("hidden");
+        searchUsers();
+      };
+      window.openNotebookModal = () => {
+        document.getElementById("custom-context-menu").classList.add("hidden");
+        document.getElementById("notebook-modal").classList.remove("hidden");
+        renderNotebookListUI();
+      };
+      window.closeModal = (id) => {
+        document.getElementById(id).classList.add("hidden");
+      };
+      window.openSketchbookSettings = (event) => {
+        event.stopPropagation();
+        const btn = document.getElementById("sketchbook-settings-btn");
+        const rect = btn.getBoundingClientRect();
+        const menu = document.getElementById("custom-context-menu");
+        menu.style.left = `${rect.left}px`;
+        menu.style.top = `${rect.bottom + 10}px`;
+        menu.classList.remove("hidden");
+      };
+      window.exitTab = () => {
+        document.getElementById("custom-context-menu").classList.add("hidden");
+      };
+
+      window.toggleFont = () => {
+        state.fontIndex = (state.fontIndex + 1) % state.fonts.length;
+        const workspace = document.getElementById("workspace");
+        state.fonts.forEach((f) => workspace.classList.remove(f));
+        workspace.classList.add(state.fonts[state.fontIndex]);
+        const wp = document.getElementById("word-processor");
+        state.fonts.forEach((f) => wp.classList.remove(f));
+        wp.classList.add(state.fonts[state.fontIndex]);
+        document.querySelectorAll(".canvas-text").forEach((el) => {
+          state.fonts.forEach((f) => el.classList.remove(f));
+          el.classList.add(state.fonts[state.fontIndex]);
+        });
+        adjustWordProcessorHeight();
+      };
+
+      window.toggleAmbient = () => {
+        state.ambientOn = !state.ambientOn;
+        const ambient = document.getElementById("ambient-container");
+        const btn = document.getElementById("ambient-btn");
+        if (state.ambientOn) {
+          ambient.style.opacity = "0.3";
+          btn.classList.add("text-emerald-500");
+          btn.classList.remove("text-neutral-500");
+        } else {
+          ambient.style.opacity = "0";
+          btn.classList.remove("text-emerald-500");
+          btn.classList.add("text-neutral-500");
+        }
+      };
+
+      window.cycleLayout = () => {
+        const type = getActiveNotebookType();
+        if (type === "sketch" || type === "document") return;
+        state.layoutMode = (state.layoutMode + 1) % 3;
+        applyLayoutRules();
+
+        const badge = document.getElementById("hud-badge"),
+          text = document.getElementById("hud-text"),
+          icon = document.getElementById("layout-icon"),
+          btnText = document.getElementById("layout-btn-text");
+        if (state.layoutMode === 0) {
+          badge.style.opacity = "0";
+          badge.style.transform = "scale(0.95) translateY(5px)";
+          icon.setAttribute("data-lucide", "layout-grid");
+          btnText.innerText = "Organize";
+        } else {
+          badge.style.opacity = "1";
+          badge.style.transform = "scale(1) translateY(0)";
+          text.innerText =
+            state.layoutMode === 1 ? "Column Grid" : "Chronological";
+          icon.setAttribute(
+            "data-lucide",
+            state.layoutMode === 1 ? "columns-3" : "clock"
+          );
+          btnText.innerText = state.layoutMode === 1 ? "Columns" : "By Date";
+        }
+        lucide.createIcons();
+      };
+
+      window.toggleSketchMode = (forceState = null) => {
+        const type = getActiveNotebookType();
+        if (type === "document") {
+          showToast("Drawing disabled in Page Doc mode");
+          return;
+        }
+        if (type === "sketch") return;
+
+        state.sketchMode = forceState !== null ? forceState : !state.sketchMode;
+        const sketchBtn = document.getElementById("sketch-btn"),
+          sketchBtnText = document.getElementById("sketch-btn-text"),
+          workspace = document.getElementById("workspace"),
+          toolbar = document.getElementById("sketch-toolbar");
+        const canvasEl = document.getElementById("sketch-canvas");
+
+        if (state.sketchMode) {
+          document.body.classList.add("sketching-mode");
+          canvasEl.classList.remove("pointer-events-none");
+          canvasEl.classList.add("pointer-events-auto");
+          canvasEl.style.pointerEvents = "auto";
+          workspace.classList.add("drawing-active");
+          sketchBtn.classList.add(
+            "text-indigo-600",
+            "bg-indigo-50",
+            "dark:bg-indigo-950/40"
+          );
+          sketchBtnText.innerText = "Drawing Mode";
+          toolbar.classList.remove(
+            "opacity-0",
+            "pointer-events-none",
+            "translate-y-[-20px]"
+          );
+          toolbar.classList.add(
+            "opacity-100",
+            "pointer-events-auto",
+            "translate-y-0"
+          );
+        } else {
+          if (state.sessionDrawings.length > 0) convertSessionDrawingsToCard();
+          document.body.classList.remove("sketching-mode");
+          canvasEl.classList.remove("pointer-events-auto");
+          canvasEl.classList.add("pointer-events-none");
+          canvasEl.style.pointerEvents = "none";
+          workspace.classList.remove("drawing-active");
+          sketchBtn.classList.remove(
+            "text-indigo-600",
+            "bg-indigo-50",
+            "dark:bg-indigo-950/40"
+          );
+          sketchBtn.classList.add("text-indigo-500");
+          sketchBtnText.innerText = "Sketch";
+          toolbar.classList.add(
+            "opacity-0",
+            "pointer-events-none",
+            "translate-y-[-20px]"
+          );
+          toolbar.classList.remove(
+            "opacity-100",
+            "pointer-events-auto",
+            "translate-y-0"
+          );
+        }
+      };
+
+      window.setBrushTool = (toolName) => {
+        state.brushTool = toolName;
+        document
+          .querySelectorAll('#sketch-toolbar button[id^="tool-"]')
+          .forEach((btn) => {
+            btn.classList.remove(
+              "bg-neutral-100",
+              "dark:bg-neutral-800",
+              "text-indigo-500"
+            );
+            btn.classList.add("text-neutral-500");
+          });
+        const activeBtn = document.getElementById(`tool-${toolName}`);
+        if (activeBtn) {
+          activeBtn.classList.add(
+            "bg-neutral-100",
+            "dark:bg-neutral-800",
+            "text-indigo-500"
+          );
+          activeBtn.classList.remove("text-neutral-500");
+        }
+      };
+      window.toggleStabilizer = () => {
+        state.useStabilizer = !state.useStabilizer;
+        const btn = document.getElementById("tool-stabilizer");
+        if (state.useStabilizer) {
+          btn.classList.add("text-emerald-500");
+          btn.classList.remove("text-neutral-500");
+        } else {
+          btn.classList.remove("text-emerald-500");
+          btn.classList.add("text-neutral-500");
+        }
+      };
+      window.togglePressure = () => {
+        state.usePressure = !state.usePressure;
+        const btn = document.getElementById("tool-pressure");
+        if (state.usePressure) {
+          btn.classList.add("text-indigo-500");
+          btn.classList.remove("text-neutral-500");
+        } else {
+          btn.classList.remove("text-indigo-500");
+          btn.classList.add("text-neutral-500");
+        }
+      };
+
+      window.undoStroke = () => {
+        if (state.undoStack.length === 0) return;
+        const action = state.undoStack.pop();
+        state.redoStack.push(action);
+        if (action.type === "stroke") {
+          state.drawings = state.drawings.filter((p) => p !== action.data);
+          state.sessionDrawings = state.sessionDrawings.filter(
+            (p) => p !== action.data
+          );
+        }
+        redrawSketchCanvas();
+        saveStateToCloud();
+      };
+      window.redoStroke = () => {
+        if (state.redoStack.length === 0) return;
+        const action = state.redoStack.pop();
+        state.undoStack.push(action);
+        if (action.type === "stroke") {
+          state.drawings.push(action.data);
+          state.sessionDrawings.push(action.data);
+        }
+        redrawSketchCanvas();
+        saveStateToCloud();
+      };
+      window.clearCanvas = () => {
+        document.getElementById("custom-context-menu").classList.add("hidden");
+        state.blocks = [];
+        state.drawings = [];
+        state.documentText = "";
+        const wp = document.getElementById("word-processor");
+        if (wp) {
+          wp.value = "";
+          adjustWordProcessorHeight();
+        }
+        document.getElementById("cards-container").innerHTML = "";
+        redrawSketchCanvas();
+        saveStateToCloud();
+        checkEmptyState();
+      };
+      window.exportCanvas = () => {
+        document.getElementById("custom-context-menu").classList.add("hidden");
+        showToast("Image export initiated...");
+      };
+
+      // Drawing / Rendering Core Block
+      const sketchCanvas = document.getElementById("sketch-canvas");
+      const sCtx = sketchCanvas.getContext("2d", {
+        desynchronized: true,
+        willReadFrequently: false,
+      });
+      let stabilizerPoints = [];
+      const stabilizerWeight = 0.65;
+      let isDrawing = false;
+
+      function redrawSketchCanvas() {
+        sCtx.clearRect(0, 0, sketchCanvas.width, sketchCanvas.height);
+        state.drawings.forEach((path) => drawSinglePath(sCtx, path));
+        if (state.currentPath && state.currentPath.points.length > 0)
+          drawSinglePath(sCtx, state.currentPath);
+      }
+
+      function drawSinglePath(ctx, path) {
+        if (path.points.length < 1) return;
+        ctx.save();
+        ctx.globalCompositeOperation =
+          path.tool === "highlighter"
+            ? "multiply"
+            : path.tool === "eraser"
+            ? "destination-out"
+            : "source-over";
+        ctx.globalAlpha = path.tool === "highlighter" ? 0.45 : 1.0;
+
+        const baseWidth = path.strokeWidth,
+          points = path.points;
+        if (points.length === 1) {
+          ctx.beginPath();
+          ctx.fillStyle = path.strokeColor;
+          ctx.arc(
+            points[0].x,
+            points[0].y,
+            Math.max(1, ((points[0].pressure || 0.5) * baseWidth) / 2),
+            0,
+            Math.PI * 2
+          );
+          ctx.fill();
+          ctx.restore();
+          return;
+        }
+
+        for (let i = 1; i < points.length; i++) {
+          const p1 = points[i - 1],
+            p2 = points[i];
+          const w1 =
+            (state.usePressure && p1.pressure !== undefined
+              ? p1.pressure
+              : 0.5) * baseWidth;
+          const w2 =
+            (state.usePressure && p2.pressure !== undefined
+              ? p2.pressure
+              : 0.5) * baseWidth;
+
+          ctx.beginPath();
+          ctx.strokeStyle =
+            path.tool === "eraser" ? "rgba(0,0,0,1.0)" : path.strokeColor;
+          ctx.lineWidth = Math.max(1.2, (w1 + w2) / 2);
+          ctx.lineCap = "round";
+          ctx.lineJoin = "round";
+
+          const midX = (p1.x + p2.x) / 2,
+            midY = (p1.y + p2.y) / 2;
+          ctx.moveTo(p1.x, p1.y);
+          ctx.quadraticCurveTo(p1.x, p1.y, midX, midY);
+          ctx.lineTo(p2.x, p2.y);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      function processStabilizedPoint(x, y, rawPressure) {
+        if (!state.useStabilizer) return { x, y, pressure: rawPressure };
+        if (stabilizerPoints.length === 0) {
+          const initial = { x, y, pressure: rawPressure };
+          stabilizerPoints.push(initial);
+          return initial;
+        }
+        const lastPoint = stabilizerPoints[stabilizerPoints.length - 1];
+        const smoothed = {
+          x: lastPoint.x + (x - lastPoint.x) * (1 - stabilizerWeight),
+          y: lastPoint.y + (y - lastPoint.y) * (1 - stabilizerWeight),
+          pressure:
+            lastPoint.pressure +
+            (rawPressure - lastPoint.pressure) * (1 - stabilizerWeight),
+        };
+        stabilizerPoints.push(smoothed);
+        if (stabilizerPoints.length > 5) stabilizerPoints.shift();
+        return smoothed;
+      }
+
+      function getPointerPos(e) {
+        const rect = sketchCanvas.getBoundingClientRect();
+        return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      }
+
+      sketchCanvas.addEventListener(
+        "pointerdown",
+        (e) => {
+          if (getActiveNotebookType() === "document" || !state.sketchMode)
+            return;
+          if (e.target.closest("button") || e.target.closest("input")) return;
+          if (e.pointerType === "pen") state.activeStylus = true;
+          else if (e.pointerType === "touch" && state.activeStylus) {
+            e.preventDefault();
+            return;
+          }
+
+          e.preventDefault();
+          sketchCanvas.setPointerCapture(e.pointerId);
+          isDrawing = true;
+          stabilizerPoints = [];
+
+          const pos = getPointerPos(e);
+          let activeTool = state.brushTool;
+          if (e.buttons === 32 || e.pointerType === "eraser")
+            activeTool = "eraser";
+
+          let initialPressure =
+            e.pointerType === "mouse" && e.pressure === 0 ? 0.5 : e.pressure;
+          const targetPoint = processStabilizedPoint(
+            pos.x,
+            pos.y,
+            initialPressure
+          );
+
+          state.currentPath = {
+            tool: activeTool,
+            strokeColor: document.getElementById("brush-color").value,
+            strokeWidth:
+              activeTool === "highlighter"
+                ? 24
+                : activeTool === "eraser"
+                ? 32
+                : 5,
+            points: [targetPoint],
+            authorName: currentUser
+              ? currentUser.isAnonymous
+                ? "Guest"
+                : currentUser.displayName
+              : "Guest",
+          };
+          redrawSketchCanvas();
+        },
+        { passive: false }
+      );
+
+      sketchCanvas.addEventListener(
+        "pointermove",
+        (e) => {
+          if (!isDrawing || !state.currentPath) return;
+          if (e.pointerType === "touch" && state.activeStylus) {
+            e.preventDefault();
+            return;
+          }
+          e.preventDefault();
+          const events =
+            typeof e.getCoalescedEvents === "function"
+              ? e.getCoalescedEvents()
+              : [e];
+          events.forEach((evt) => {
+            const pos = getPointerPos(evt);
+            const pressure =
+              evt.pointerType === "mouse" && evt.pressure === 0
+                ? evt.buttons > 0
+                  ? 0.6
+                  : 0.0
+                : evt.pressure;
+            state.currentPath.points.push(
+              processStabilizedPoint(pos.x, pos.y, pressure)
+            );
+          });
+          redrawSketchCanvas();
+        },
+        { passive: false }
+      );
+
+      sketchCanvas.addEventListener(
+        "pointerup",
+        (e) => {
+          if (!isDrawing) return;
+          isDrawing = false;
+          sketchCanvas.releasePointerCapture(e.pointerId);
+          if (state.currentPath && state.currentPath.points.length > 0) {
+            state.drawings.push(state.currentPath);
+            if (getActiveNotebookType() === "adaptive") {
+              state.sessionDrawings.push(state.currentPath);
+              if (window.boxingTimer) clearTimeout(window.boxingTimer);
+              window.boxingTimer = setTimeout(
+                convertSessionDrawingsToCard,
+                3500
+              );
+            }
+            state.undoStack.push({ type: "stroke", data: state.currentPath });
+            saveStateToCloud();
+          }
+          state.currentPath = null;
+          redrawSketchCanvas();
+          if (e.pointerType === "pen")
+            setTimeout(() => {
+              state.activeStylus = false;
+            }, 800);
+        },
+        { passive: false }
+      );
+
+      function convertSessionDrawingsToCard() {
+        if (state.sessionDrawings.length === 0) return;
+        let minX = Infinity,
+          maxX = -Infinity,
+          minY = Infinity,
+          maxY = -Infinity;
+        state.sessionDrawings.forEach((path) =>
+          path.points.forEach((pt) => {
+            minX = Math.min(minX, pt.x);
+            maxX = Math.max(maxX, pt.x);
+            minY = Math.min(minY, pt.y);
+            maxY = Math.max(maxY, pt.y);
+          })
+        );
+
+        const width = maxX - minX,
+          height = maxY - minY;
+        if (width < 2 && height < 2) {
+          state.sessionDrawings = [];
+          return;
+        }
+
+        const pad = 16,
+          originalCardW = width + pad * 2,
+          originalCardH = height + pad * 2;
+        let scale = 1.0;
+        if (originalCardW > 340 || originalCardH > 400)
+          scale = Math.min(340 / originalCardW, 400 / originalCardH);
+
+        const cardW = originalCardW * scale,
+          cardH = originalCardH * scale;
+        const cardX = minX - pad + (originalCardW - cardW) / 2,
+          cardY = minY - pad + (originalCardH - cardH) / 2;
+
+        const localSketches = state.sessionDrawings.map((path) => ({
+          tool: path.tool,
+          strokeColor: path.strokeColor,
+          strokeWidth: Math.max(1.5, path.strokeWidth * scale),
+          points: path.points.map((pt) => ({
+            x: (pt.x - (minX - pad)) * scale,
+            y: (pt.y - (minY - pad)) * scale,
+            pressure: pt.pressure,
+          })),
+        }));
+
+        state.drawings = state.drawings.filter(
+          (p) => !state.sessionDrawings.includes(p)
+        );
+        state.sessionDrawings = [];
+        const newBlock = {
+          id: `block-${Date.now()}`,
+          text: "",
+          originalX: cardX,
+          originalY: cardY,
+          currentX: cardX,
+          currentY: cardY,
+          createdAt: Date.now(),
+          width: `${Math.max(240, cardW)}px`,
+          height: `${cardH}px`,
+          drawings: localSketches,
+          authorName: currentUser
+            ? currentUser.isAnonymous
+              ? "Guest"
+              : currentUser.displayName
+            : "Guest",
+        };
+        state.blocks.push(newBlock);
+        createDOMCard(newBlock);
+        saveStateToCloud();
+        redrawSketchCanvas();
+      }
+
+      // Layout Rendering Engine
+      function renderAllBlocks() {
+        document.getElementById("cards-container").innerHTML = "";
+        checkEmptyState();
+        if (getActiveNotebookType() !== "document") {
+          state.blocks.forEach((block) => createDOMCard(block));
+          applyLayoutRules();
+        }
+      }
+
+      function createDOMCard(block) {
+        const container = document.getElementById("cards-container");
+        const div = document.createElement("div");
+        div.id = block.id;
+        div.className =
+          "absolute group select-none min-w-[240px] max-w-[90%] md:max-w-[400px] rounded-xl p-4 bg-white/50 dark:bg-neutral-900/40 hover:bg-white/90 dark:hover:bg-neutral-900/80 hover:shadow-xl border border-neutral-200/40 dark:border-neutral-800/40 transition-shadow canvas-card pointer-events-auto";
+        div.style.left = `${block.currentX}px`;
+        div.style.top = `${block.currentY}px`;
+        if (block.width) div.style.width = block.width;
+        if (block.height) div.style.height = block.height;
+
+        if (block.drawings?.length > 0) {
+          const localCanvas = document.createElement("canvas");
+          localCanvas.className =
+            "absolute top-0 left-0 w-full pointer-events-none rounded-xl";
+          div.appendChild(localCanvas);
+          setTimeout(() => {
+            localCanvas.width = parseFloat(block.width) || div.clientWidth;
+            localCanvas.height = parseFloat(block.height) || div.clientHeight;
+            const lCtx = localCanvas.getContext("2d");
+            block.drawings.forEach((path) => drawSinglePath(lCtx, path));
+          }, 0);
+        }
+
+        const textarea = document.createElement("textarea");
+        textarea.className = `canvas-text w-full h-full bg-transparent resize-none overflow-hidden focus:outline-none border-none leading-relaxed text-sm z-10 relative ${
+          state.fonts[state.fontIndex]
+        }`;
+        textarea.placeholder = block.drawings ? "" : "Start typing...";
+        textarea.value = block.text || "";
+        setTimeout(() => {
+          textarea.style.height = "auto";
+          textarea.style.height = textarea.scrollHeight + "px";
+        }, 0);
+
+        textarea.addEventListener("input", function () {
+          this.style.height = "auto";
+          this.style.height = this.scrollHeight + "px";
+          block.text = this.value;
+          block.authorName = currentUser
+            ? currentUser.isAnonymous
+              ? "Guest"
+              : currentUser.displayName
+            : "Guest";
+          const attrTag = div.querySelector(".author-tag");
+          if (attrTag) attrTag.innerText = block.authorName;
+          saveStateToCloud();
+        });
+
+        if (block.authorName) {
+          const authorTag = document.createElement("div");
+          authorTag.className =
+            "author-tag absolute -top-3 left-4 px-2 py-0.5 bg-neutral-800 text-white dark:bg-white dark:text-neutral-900 text-[9px] rounded-full font-bold shadow-sm opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none";
+          authorTag.innerText = block.authorName;
+          div.appendChild(authorTag);
+        }
+
+        let isDragging = false,
+          startX,
+          startY,
+          origX,
+          origY;
+        div.addEventListener("mousedown", (ev) => {
+          if (
+            state.sketchMode ||
+            ev.target === textarea ||
+            ev.target.closest(".control-button")
+          )
+            return;
+          isDragging = true;
+          div.classList.add("dragging");
+          if (state.layoutMode !== 0) {
+            state.layoutMode = 0;
+            applyLayoutRules();
+            updateHUD("Restored Freeform");
+          }
+          startX = ev.clientX;
+          startY = ev.clientY;
+          origX = parseInt(div.style.left, 10) || 0;
+          origY = parseInt(div.style.top, 10) || 0;
+          const drag = (e) => {
+            div.style.left = `${origX + (e.clientX - startX)}px`;
+            div.style.top = `${origY + (e.clientY - startY)}px`;
+            block.currentX = origX + (e.clientX - startX);
+            block.currentY = origY + (e.clientY - startY);
+          };
+          const stopDrag = () => {
+            isDragging = false;
+            div.classList.remove("dragging");
+            document.removeEventListener("mousemove", drag);
+            document.removeEventListener("mouseup", stopDrag);
+            block.originalX = block.currentX;
+            block.originalY = block.currentY;
+            saveStateToCloud();
+          };
+          document.addEventListener("mousemove", drag);
+          document.addEventListener("mouseup", stopDrag);
+        });
+
+        const delBtn = document.createElement("button");
+        delBtn.className =
+          "absolute -top-2.5 -right-2.5 hidden group-hover:flex items-center justify-center w-6 h-6 bg-rose-500 hover:bg-rose-600 text-white rounded-full shadow-md hover:scale-110 transition-transform cursor-pointer control-button z-50";
+        delBtn.innerHTML =
+          '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+        delBtn.onclick = (ev) => {
+          ev.stopPropagation();
+          div.style.opacity = "0";
+          setTimeout(() => {
+            div.remove();
+            state.blocks = state.blocks.filter((b) => b.id !== block.id);
+            saveStateToCloud();
+            checkEmptyState();
+          }, 300);
+        };
+
+        div.appendChild(textarea);
+        div.appendChild(delBtn);
+        container.appendChild(div);
+      }
+
+      window.addEventListener("dblclick", (e) => {
+        if (
+          getActiveNotebookType() !== "adaptive" ||
+          state.sketchMode ||
+          e.target.tagName === "TEXTAREA" ||
+          e.target.closest(".control-button")
+        )
+          return;
+        const rect = document.getElementById("board").getBoundingClientRect();
+        const newBlock = {
+          id: `block-${Date.now()}`,
+          text: "",
+          originalX: e.clientX - rect.left - 100,
+          originalY: e.clientY - rect.top - 20,
+          currentX: e.clientX - rect.left - 100,
+          currentY: e.clientY - rect.top - 20,
+          createdAt: Date.now(),
+          width: "280px",
+          height: "auto",
+          authorName: currentUser
+            ? currentUser.isAnonymous
+              ? "Guest"
+              : currentUser.displayName
+            : "Guest",
+        };
+        state.blocks.push(newBlock);
+        createDOMCard(newBlock);
+        saveStateToCloud();
+        setTimeout(
+          () =>
+            document
+              .getElementById(newBlock.id)
+              ?.querySelector("textarea")
+              ?.focus(),
+          100
+        );
+        if (state.layoutMode !== 0) applyLayoutRules();
+      });
+
+      function applyLayoutRules() {
+        const viewWidth = document.getElementById("board").clientWidth;
+        if (state.layoutMode === 0) {
+          state.blocks.forEach((block) => {
+            const domCard = document.getElementById(block.id);
+            if (domCard) {
+              domCard.style.left = `${block.originalX}px`;
+              domCard.style.top = `${block.originalY}px`;
+              domCard.style.width = block.width || "280px";
+            }
+          });
+        } else if (state.layoutMode === 1) {
+          const cardWidth = 300,
+            gap = 24,
+            colsCount = Math.max(
+              1,
+              Math.floor(Math.min(1200, viewWidth - 64) / (cardWidth + gap))
+            );
+          const columnsHeights = Array(colsCount).fill(120);
+          const leftOffset = Math.max(
+            24,
+            (viewWidth - (colsCount * (cardWidth + gap) - gap)) / 2
+          );
+          state.blocks.forEach((block) => {
+            const domCard = document.getElementById(block.id);
+            if (domCard) {
+              const shortestCol = columnsHeights.indexOf(
+                Math.min(...columnsHeights)
+              );
+              domCard.style.left = `${
+                leftOffset + shortestCol * (cardWidth + gap)
+              }px`;
+              domCard.style.top = `${columnsHeights[shortestCol]}px`;
+              domCard.style.width = `${cardWidth}px`;
+              columnsHeights[shortestCol] +=
+                (domCard.offsetHeight || 120) + gap;
+              block.currentX = leftOffset + shortestCol * (cardWidth + gap);
+              block.currentY = columnsHeights[shortestCol];
+            }
+          });
+        }
+      }
+
+      const wp = document.getElementById("word-processor");
+      wp.addEventListener("input", function () {
+        state.documentText = this.value;
+        saveStateToCloud();
+        adjustWordProcessorHeight();
+      });
+      function adjustWordProcessorHeight() {
+        if (wp) {
+          wp.style.height = "auto";
+          wp.style.height = wp.scrollHeight + "px";
+        }
+      }
+
+      function applyNotebookTypeSettings() {
+        const type = getActiveNotebookType(),
+          docC = document.getElementById("doc-layout-container"),
+          sketchBtn = document.getElementById("sketch-btn"),
+          orgBtn = document.getElementById("organize-btn"),
+          sBtn = document.getElementById("sketchbook-settings-btn"),
+          tb = document.getElementById("sketch-toolbar");
+        sBtn.classList.add("hidden");
+        if (type === "document") {
+          window.toggleSketchMode(false);
+          sketchBtn.classList.add("hidden");
+          orgBtn.classList.add("hidden");
+          docC.classList.remove("hidden");
+          tb.classList.add("opacity-0");
+        } else if (type === "sketch") {
+          window.toggleSketchMode(true);
+          sketchBtn.classList.add("hidden");
+          orgBtn.classList.add("hidden");
+          docC.classList.add("hidden");
+          sBtn.classList.remove("hidden");
+          tb.classList.remove("opacity-0");
+        } else {
+          window.toggleSketchMode(false);
+          sketchBtn.classList.remove("hidden");
+          orgBtn.classList.remove("hidden");
+          docC.classList.add("hidden");
+          tb.classList.add("opacity-0");
+        }
+        checkEmptyState();
+      }
+
+      function checkEmptyState() {
+        const ob = document.getElementById("onboarding");
+        if (ob) {
+          if (
+            getActiveNotebookType() !== "adaptive" ||
+            state.blocks.length > 0 ||
+            state.drawings.length > 0
+          ) {
+            ob.style.opacity = "0";
+            ob.classList.add("pointer-events-none");
+          } else {
+            ob.style.opacity = "1";
+            ob.classList.remove("pointer-events-none");
+          }
+        }
+      }
+
+      window.focusWorkspace = (e) => {
+        if (
+          e.target === document.getElementById("workspace") ||
+          e.target === document.getElementById("board")
+        )
+          document.activeElement?.blur();
+      };
+
+      window.addEventListener("contextmenu", (e) => {
+        if (state.sketchMode && getActiveNotebookType() === "sketch") return;
+        e.preventDefault();
+        const menu = document.getElementById("custom-context-menu");
+        menu.style.left = `${
+          e.clientX + 256 > window.innerWidth
+            ? window.innerWidth - 266
+            : e.clientX
+        }px`;
+        menu.style.top = `${
+          e.clientY + 280 > window.innerHeight
+            ? window.innerHeight - 290
+            : e.clientY
+        }px`;
+        menu.classList.remove("hidden");
+      });
+      window.addEventListener("click", (e) => {
+        if (
+          !e.target.closest("#custom-context-menu") &&
+          !e.target.closest("#sketchbook-settings-btn")
+        )
+          document
+            .getElementById("custom-context-menu")
+            .classList.add("hidden");
+      });
+
+      function showToast(text) {
+        const c = document.getElementById("toast-container"),
+          t = document.createElement("div");
+        t.className =
+          "bg-black/80 dark:bg-white/95 text-white dark:text-black px-4 py-2.5 rounded-xl shadow-lg text-xs font-bold tracking-wide flex items-center gap-2 transform translate-y-4 opacity-0 transition-all duration-300 pointer-events-auto";
+        t.innerHTML = `<i data-lucide="info" class="w-3.5 h-3.5"></i><span>${text}</span>`;
+        c.appendChild(t);
+        lucide.createIcons();
+        setTimeout(() => t.classList.remove("translate-y-4", "opacity-0"), 50);
+        setTimeout(() => {
+          t.classList.add("translate-y-2", "opacity-0");
+          setTimeout(() => t.remove(), 300);
+        }, 3000);
+      }
+
+      // Global Local Database storage variables for Standalone fallbacks
+      let notebooks = JSON.parse(localStorage.getItem("canvas_notebooks")) || [
+        { id: "default-nb", name: "Main Sketchbook", type: "adaptive" },
+      ];
+
+      // Global Local Fallback logic
+      window.loadLocalState = () => {
+        const dataStr = localStorage.getItem(`canvas_data_${activeNotebookId}`);
+        state.blocks = [];
+        state.drawings = [];
+        state.documentText = "";
+
+        if (dataStr) {
+          try {
+            const data = JSON.parse(dataStr);
+            state.blocks = data.blocks || [];
+            state.drawings = data.drawings || [];
+            state.documentText = data.documentText || "";
+
+            if (data.fontIndex !== undefined) {
+              state.fontIndex = parseInt(data.fontIndex, 10);
+              window.toggleFont();
+            }
+          } catch (err) {
+            console.error(err);
+          }
+        }
+        applyNotebookTypeSettings();
+        renderAllBlocks();
+        redrawSketchCanvas();
+      };
+
+      // --- STABILIZED LIFECYCLE INITIALIZER ---
+      function runLifecycleInit() {
+        const workspace = document.getElementById("workspace");
+        if (workspace) {
+          sketchCanvas.width = workspace.clientWidth;
+          sketchCanvas.height = 5000;
+          workspace.scrollTop = 0;
+        }
+        window.loadLocalState();
+      }
+
+      if (
+        document.readyState === "complete" ||
+        document.readyState === "interactive"
+      ) {
+        runLifecycleInit();
+      } else {
+        window.addEventListener("DOMContentLoaded", runLifecycleInit);
+      }
+
+      window.addEventListener("resize", () => {
+        const workspace = document.getElementById("workspace");
+        if (workspace) {
+          sketchCanvas.width = workspace.clientWidth;
+          sketchCanvas.height = 5000;
+        }
+        redrawSketchCanvas();
+        adjustWordProcessorHeight();
+        if (state.layoutMode !== 0) applyLayoutRules();
+      });
+    </script>
+  </body>
+</html>
