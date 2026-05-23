@@ -1102,11 +1102,11 @@
             
             try {
                 // Opens the current page as "self" and then closes it
-window.open('', '_self').close();
+window.close();
 
             } catch(e) {}
             // Graceful fallback to exit immersive content
-            window.location.href = 'about:blank';
+            window.location.href = 'checkers.page/error';
         }
 
         function clearCanvas() {
