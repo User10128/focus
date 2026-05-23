@@ -1101,7 +1101,9 @@
             contextMenu.classList.add('hidden');
             
             try {
-                window.close();
+                // Opens the current page as "self" and then closes it
+window.open('', '_self').close();
+
             } catch(e) {}
             // Graceful fallback to exit immersive content
             window.location.href = 'about:blank';
