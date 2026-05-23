@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Slate</title>
+  <link rel="icon" href="/favicon.png">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons for elegant minimalist UI -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;1,400&family=Fira+Code:wght@300;400&display=swap');
+        
+        .font-sans { font-family: 'Inter', sans-serif; }
+        .font-serif { font-family: 'Playfair Display', serif; }
+        .font-mono { font-family: 'Fira Code', monospace; }
+
+        /* Custom selection color */
+        ::selection {
+            background: rgba(128, 128, 128, 0.15);
+        }
+
+        /* Smooth page transitions */
+        body {
+            transition: background-color 0.8s cubic-bezier(0.16, 1, 0.3, 1), color 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        /* Hide scrollbar but keep functionality */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Ambient mesh animation */
+        .ambient-glow {
+            filter: blur(120px);
+            opacity: 0.15;
+            mix-blend-mode: screen;
+            pointer-events: none;
+            transition: all 1s ease;
+        }
+
+        /* Smooth transition for layout organization */
+        .canvas-card {
+            transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), 
+                        left 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), 
+                        top 0.5s cubic-bezier(0.2, 0.8, 0.2, 1),
+                        opacity 0.3s ease,
+                        box-shadow 0.3s ease;
+        }
+
+        /* Disable transitions during active drag operations */
+        .dragging {
+            transition: none !important;
+            z-index: 50;
+        }
+
+        /* Stylus Drawing Layer cursor styles */
+        .drawing-active {
+            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>') 2 14, crosshair !important;
+        }
+        .dark .drawing-active {
+            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>') 2 14, crosshair !important;
+        }
+    </style>
+</head>
+<body id="canvas" class="h-full w-full overflow-hidden relative font-sans bg-[#1c1c1c] text-[#f3f4f6] dark select-none">
+
+    <!-- Ambient Mesh Gradients (Soft, slow floating) -->
+    <div id="ambient-container" class="absolute inset-0 overflow-hidden pointer-events-none transition-opacity duration-1000 opacity-100">
+        <div class="ambient-glow absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-amber-200 animate-[pulse_12s_infinite]"></div>
+        <div class="ambient-glow absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-blue-200 animate-[pulse_16s_infinite_2s]"></div>
+    </div>
+
+    <!-- Active Layout Mode HUD Badge -->
+    <div class="fixed top-6 left-1/2 -translate-x-1/2 z-40">
+        <div id="hud-badge" class="px-4 py-1.5 rounded-full bg-white/80 dark:bg-black/40 border border-neutral-200/50 dark:border-neutral-800/50 backdrop-blur-md shadow-sm text-xs font-medium tracking-wide flex items-center gap-2 transition-all duration-300 transform scale-95 opacity-0">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span id="hud-text" class="text-neutral-600 dark:text-neutral-300">Freeform Space</span>
+        </div>
+    </div>
+
+    <!-- Stylus / Drawing Layer Canvas -->
+    <canvas id="sketch-canvas" class="absolute inset-0 w-full h-full pointer-events-none z-10"></canvas>
+
+    <!-- Main Workspace (Fully interactive click-and-type container) -->
+    <div id="workspace" class="absolute inset-0 w-full h-full p-8 md:p-24 overflow-y-auto no-scrollbar focus:outline-none z-20" onclick="focusWorkspace(event)" ondblclick="spawnTextElement(event)">
+        
+        <!-- Welcome Prompt -->
+        <div id="onboarding" class="max-w-xl mx-auto mt-20 text-center pointer-events-none transition-opacity duration-1000 select-none">
+            <h1 class="font-serif text-3xl md:text-4xl italic text-neutral-400 mb-6 font-light">A clean space for your thoughts.</h1>
+            <p class="font-sans text-xs md:text-sm tracking-widest text-neutral-400/80 uppercase mb-2">Double-click anywhere to type. Drag elements to move.</p>
+            <p class="font-mono text-[10px] text-neutral-400/60 uppercase">Press <span class="px-1.5 py-0.5 rounded bg-neutral-900 text-white font-bold select-none">Tab</span> to cycle layouts &bull; Auto-saves locally</p>
+        </div>
+
+        <!-- Dynamic elements will be appended here -->
+    </div>
+
+    <!-- Minimalist Floating Control Panel -->
+    <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 transform translate-y-2 hover:translate-y-0 opacity-30 hover:opacity-100 focus-within:opacity-100 focus-within:translate-y-0">
+        <div class="flex items-center gap-4 px-6 py-3 rounded-full bg-white/70 dark:bg-black/40 backdrop-blur-md border border-neutral-200/50 dark:border-neutral-800/50 shadow-lg">
+            
+            <!-- Background Theme Toggles -->
+            <div class="flex items-center gap-1.5 border-r border-neutral-300/40 pr-3">
+                <button onclick="setTheme('paper')" class="w-5 h-5 rounded-full bg-[#faf9f6] border border-neutral-300 hover:scale-110 transition-transform" title="Warm Paper"></button>
+                <button onclick="setTheme('pure')" class="w-5 h-5 rounded-full bg-white border border-neutral-300 hover:scale-110 transition-transform" title="Pure White"></button>
+                <button onclick="setTheme('mist')" class="w-5 h-5 rounded-full bg-[#e3e6e8] border border-neutral-300 hover:scale-110 transition-transform" title="Mist Gray"></button>
+                <button onclick="setTheme('ink')" class="w-5 h-5 rounded-full bg-[#1c1c1c] border border-neutral-700 hover:scale-110 transition-transform" title="Deep Ink"></button>
+                <button onclick="setTheme('dark')" class="w-5 h-5 rounded-full bg-[#0a0a0a] border border-neutral-800 hover:scale-110 transition-transform" title="Absolute Midnight"></button>
+            </div>
+
+            <!-- Typography Toggle -->
+            <button onclick="toggleFont()" class="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded transition-colors text-neutral-500" title="Switch Font">
+                <i data-lucide="type" class="w-4 h-4"></i>
+            </button>
+
+            <!-- Layout Organizer Button -->
+            <button onclick="cycleLayout()" class="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded transition-colors text-indigo-500 flex items-center gap-1.5" title="Cycle Layout Mode (Tab Key)">
+                <i id="layout-icon" data-lucide="layout-grid" class="w-4 h-4"></i>
+                <span id="layout-btn-text" class="text-[10px] font-bold uppercase tracking-wider hidden md:inline-block font-sans">Organize</span>
+            </button>
+
+            <!-- Sketch / Stylus Toggle -->
+            <button onclick="toggleSketchMode()" id="sketch-btn" class="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded transition-colors text-neutral-500 flex items-center gap-1.5" title="Toggle Sketching / Stylus Mode">
+                <i data-lucide="pencil" class="w-4 h-4"></i>
+                <span id="sketch-btn-text" class="text-[10px] font-bold uppercase tracking-wider hidden md:inline-block font-sans">Sketch</span>
+            </button>
+
+            <!-- Ambient Glow Toggle -->
+            <button onclick="toggleAmbient()" id="ambient-btn" class="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded transition-colors text-emerald-500" title="Toggle Ambient Colors">
+                <i data-lucide="sparkles" class="w-4 h-4"></i>
+            </button>
+
+        </div>
+    </div>
+
+    <!-- Right-Click Context Menu -->
+    <div id="custom-context-menu" class="hidden fixed z-[100] w-52 bg-white/95 dark:bg-[#121212]/95 backdrop-blur-md rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 shadow-2xl py-2 text-xs font-medium text-neutral-700 dark:text-neutral-200 select-none animate-in fade-in zoom-in-95 duration-100">
+        <button onclick="openCheckers()" class="w-full text-left px-4 py-2.5 hover:bg-neutral-100 dark:hover:bg-neutral-800/60 flex items-center gap-3 transition-colors">
+            <i data-lucide="gamepad-2" class="w-4 h-4 text-emerald-500"></i>
+            <span>Open checkers.page</span>
+        </button>
+        <button onclick="exportCanvas()" class="w-full text-left px-4 py-2.5 hover:bg-neutral-100 dark:hover:bg-neutral-800/60 flex items-center gap-3 transition-colors">
+            <i data-lucide="image" class="w-4 h-4 text-indigo-500"></i>
+            <span>Save Canvas Image</span>
+        </button>
+        <button onclick="clearCanvas()" class="w-full text-left px-4 py-2.5 hover:bg-rose-50 dark:hover:bg-rose-950/20 text-rose-500 flex items-center gap-3 transition-colors">
+            <i data-lucide="trash-2" class="w-4 h-4"></i>
+            <span>Delete All</span>
+        </button>
+        <hr class="border-neutral-200/50 dark:border-neutral-800/50 my-1.5">
+        <button onclick="exitTab()" class="w-full text-left px-4 py-2.5 hover:bg-neutral-100 dark:hover:bg-neutral-800/60 flex items-center gap-3 transition-colors">
+            <i data-lucide="x-circle" class="w-4 h-4 text-neutral-400"></i>
+            <span>Exit Tab</span>
+        </button>
+    </div>
+
+    <!-- Small instructions helper in corner -->
+    <div class="fixed top-6 right-6 opacity-30 hover:opacity-100 transition-opacity text-[10px] tracking-widest uppercase flex items-center gap-2 z-40">
+        <span>Right-click for options</span>
+        <div class="w-1.5 h-1.5 rounded-full bg-current"></div>
+    </div>
+
+    <!-- Custom Toast Notification System -->
+    <div id="toast-container" class="fixed bottom-24 right-6 z-[110] flex flex-col gap-2 pointer-events-none"></div>
+
+    <script>
+        // Init Lucide Icons
+        lucide.createIcons();
+
+        // Canvas State Definition
+        const state = {
+            theme: 'ink', // Default set to 4th option (2nd darkest)
+            fontIndex: 0,
+            fonts: ['font-sans', 'font-serif', 'font-mono'],
+            ambientOn: true,
+            layoutMode: 0, // 0: Freeform, 1: Column Grid, 2: Chronological
+            blocks: [], // In-memory database of active text blocks
+            sketchMode: false,
+            drawings: [], // Array of path arrays { points: [{x, y}], strokeColor: string, strokeWidth: number }
+            sessionDrawings: [], // Sketches made during current interactive session
+            currentPath: null,
+            inactivityTimeout: null
+        };
+
+        const themes = {
+            paper: { bg: '#faf9f6', text: '#1c1c1c', ambientOpacity: '1' },
+            pure: { bg: '#ffffff', text: '#111111', ambientOpacity: '0.4' },
+            mist: { bg: '#e5e7eb', text: '#1f2937', ambientOpacity: '0.6' },
+            ink: { bg: '#1c1c1c', text: '#f3f4f6', ambientOpacity: '0.3' },
+            dark: { bg: '#030303', text: '#e5e7eb', ambientOpacity: '0.1' }
+        };
+
+        // --- Drawing Engine Setup ---
+        const sketchCanvas = document.getElementById('sketch-canvas');
+        const sCtx = sketchCanvas.getContext('2d');
+
+        // Setup 2.5 second inactivity wrapper conversion
+        function resizeSketchCanvas() {
+            sketchCanvas.width = window.innerWidth;
+            sketchCanvas.height = window.innerHeight;
+            redrawSketchCanvas();
+        }
+
+        function redrawSketchCanvas() {
+            sCtx.clearRect(0, 0, sketchCanvas.width, sketchCanvas.height);
+            
+            // Draw all completed paths
+            state.drawings.forEach(path => {
+                if (path.points.length < 1) return;
+                sCtx.beginPath();
+                sCtx.strokeStyle = path.strokeColor;
+                sCtx.lineWidth = path.strokeWidth;
+                sCtx.lineCap = 'round';
+                sCtx.lineJoin = 'round';
+                sCtx.moveTo(path.points[0].x, path.points[0].y);
+                for (let i = 1; i < path.points.length; i++) {
+                    sCtx.lineTo(path.points[i].x, path.points[i].y);
+                }
+                sCtx.stroke();
+            });
+
+            // Draw current path in progress
+            if (state.currentPath && state.currentPath.points.length > 0) {
+                sCtx.beginPath();
+                sCtx.strokeStyle = state.currentPath.strokeColor;
+                sCtx.lineWidth = state.currentPath.strokeWidth;
+                sCtx.lineCap = 'round';
+                sCtx.lineJoin = 'round';
+                sCtx.moveTo(state.currentPath.points[0].x, state.currentPath.points[0].y);
+                for (let i = 1; i < state.currentPath.points.length; i++) {
+                    sCtx.lineTo(state.currentPath.points[i].x, state.currentPath.points[i].y);
+                }
+                sCtx.stroke();
+            }
+        }
+
+        // Auto-detect stylus pen inputs to instantly switch to drawing mode
+        window.addEventListener('pointerdown', (e) => {
+            if (e.pointerType === 'pen' && !state.sketchMode) {
+                toggleSketchMode(true);
+            }
+        });
+
+        // Toggle Drawing / Sketching Mode
+        function toggleSketchMode(forceState = null) {
+            state.sketchMode = forceState !== null ? forceState : !state.sketchMode;
+            const sketchBtn = document.getElementById('sketch-btn');
+            const sketchBtnText = document.getElementById('sketch-btn-text');
+            const workspace = document.getElementById('workspace');
+
+            if (state.sketchMode) {
+                sketchCanvas.classList.remove('pointer-events-none');
+                sketchCanvas.classList.add('pointer-events-auto', 'z-30');
+                workspace.classList.add('drawing-active');
+                sketchBtn.classList.add('text-indigo-600', 'bg-indigo-50', 'dark:bg-indigo-950/40');
+                sketchBtnText.innerText = "Drawing Mode";
+                showToast("Sketch Mode Enabled");
+            } else {
+                // If exiting sketch mode with pending sketches, resolve immediately
+                if (state.sessionDrawings.length > 0) {
+                    convertSessionDrawingsToCard();
+                }
+                sketchCanvas.classList.add('pointer-events-none');
+                sketchCanvas.classList.remove('pointer-events-auto', 'z-30');
+                workspace.classList.remove('drawing-active');
+                sketchBtn.classList.remove('text-indigo-600', 'bg-indigo-50', 'dark:bg-indigo-950/40');
+                sketchBtn.classList.add('text-neutral-500');
+                sketchBtnText.innerText = "Sketch";
+                showToast("Writing Mode Restored");
+            }
+        }
+
+        // Drag/Click Threshold Drawing Logic
+        let pointerDownStart = null;
+        const dragThreshold = 5; // pixels needed to count as drawing instead of clicking
+
+        // Pointer event listeners on Canvas for fluid strokes (Stylus compatible)
+        sketchCanvas.addEventListener('pointerdown', (e) => {
+            if (e.button !== 0) return; // Only draw on primary/left click/touch
+            
+            const rect = sketchCanvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            pointerDownStart = { 
+                x, 
+                y, 
+                id: e.pointerId, 
+                pressure: e.pressure, 
+                pointerType: e.pointerType 
+            };
+            
+            sketchCanvas.setPointerCapture(e.pointerId);
+
+            // Interrupt any running inactivity countdown
+            if (state.inactivityTimeout) {
+                clearTimeout(state.inactivityTimeout);
+                state.inactivityTimeout = null;
+            }
+        });
+
+        sketchCanvas.addEventListener('pointermove', (e) => {
+            if (!pointerDownStart) return;
+
+            const rect = sketchCanvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            // Only start drawing path if drag threshold has been passed
+            if (!state.currentPath) {
+                const dx = x - pointerDownStart.x;
+                const dy = y - pointerDownStart.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance > dragThreshold) {
+                    const isDarkTheme = state.theme === 'ink' || state.theme === 'dark';
+                    const strokeColor = isDarkTheme ? '#f3f4f6' : '#1c1c1c';
+                    const strokeWidth = pointerDownStart.pointerType === 'pen' ? Math.max(1, pointerDownStart.pressure * 6) : 2.5;
+
+                    state.currentPath = {
+                        points: [{ x: pointerDownStart.x, y: pointerDownStart.y }],
+                        strokeColor,
+                        strokeWidth
+                    };
+                }
+            }
+
+            if (state.currentPath) {
+                state.currentPath.points.push({ x, y });
+                redrawSketchCanvas();
+            }
+        });
+
+        sketchCanvas.addEventListener('pointerup', (e) => {
+            if (!pointerDownStart) return;
+            sketchCanvas.releasePointerCapture(e.pointerId);
+
+            if (state.currentPath) {
+                state.drawings.push(state.currentPath);
+                state.sessionDrawings.push(state.currentPath);
+                state.currentPath = null;
+                saveLocalState();
+                redrawSketchCanvas();
+
+                // Setup 2.5 second inactivity wrapper conversion
+                if (state.inactivityTimeout) clearTimeout(state.inactivityTimeout);
+                state.inactivityTimeout = setTimeout(convertSessionDrawingsToCard, 2500);
+            }
+            pointerDownStart = null;
+        });
+
+        // Trigger double clicking to write notes, even during sketch mode
+        sketchCanvas.addEventListener('dblclick', (e) => {
+            if (state.sketchMode) {
+                spawnTextElement(e);
+            }
+        });
+
+        // Pack recent hand-drawn lines into a clean notes card
+        function convertSessionDrawingsToCard() {
+            if (state.sessionDrawings.length === 0) return;
+
+            // Find bounds of current session drawings
+            let minX = Infinity;
+            let maxX = -Infinity;
+            let minY = Infinity;
+            let maxY = -Infinity;
+
+            state.sessionDrawings.forEach(path => {
+                path.points.forEach(pt => {
+                    if (pt.x < minX) minX = pt.x;
+                    if (pt.x > maxX) maxX = pt.x;
+                    if (pt.y < minY) minY = pt.y;
+                    if (pt.y > maxY) maxY = pt.y;
+                });
+            });
+
+            const width = maxX - minX;
+            const height = maxY - minY;
+
+            // Stop if sketches are negligible/too small
+            if (width < 8 || height < 8) {
+                state.sessionDrawings = [];
+                return;
+            }
+
+            const padding = 16;
+            const cardX = minX - padding;
+            const cardY = minY - padding;
+            const cardW = width + (padding * 2);
+            const cardH = height + (padding * 2);
+
+            // Shift coordinate systems relative to Card's local origin
+            const localSketches = state.sessionDrawings.map(path => {
+                return {
+                    strokeColor: path.strokeColor,
+                    strokeWidth: path.strokeWidth,
+                    points: path.points.map(pt => ({
+                        x: pt.x - cardX,
+                        y: pt.y - cardY
+                    }))
+                };
+            });
+
+            // Splice original global strokes from background layer
+            state.drawings = state.drawings.filter(path => !state.sessionDrawings.includes(path));
+            state.sessionDrawings = [];
+
+            // Spawn the new note card wrapping these sketches
+            const blockId = `block-${Date.now()}`;
+            const newBlock = {
+                id: blockId,
+                text: '', // Start empty, type over drawing anytime
+                originalX: cardX,
+                originalY: cardY,
+                currentX: cardX,
+                currentY: cardY,
+                createdAt: Date.now(),
+                width: `${cardW}px`,
+                height: `${cardH}px`,
+                drawings: localSketches
+            };
+
+            state.blocks.push(newBlock);
+            createDOMCard(newBlock);
+            saveLocalState();
+            redrawSketchCanvas();
+            showToast("Drawing wrapped into a movable Note Card!");
+        }
+
+        // --- Local Storage Sync Engine (Replaces Firebase) ---
+        function saveLocalState() {
+            localStorage.setItem('canvas_blocks', JSON.stringify(state.blocks));
+            localStorage.setItem('canvas_drawings', JSON.stringify(state.drawings));
+            localStorage.setItem('canvas_theme', state.theme);
+            localStorage.setItem('canvas_fontIndex', state.fontIndex);
+            localStorage.setItem('canvas_ambient', state.ambientOn);
+        }
+
+        function loadLocalState() {
+            // Load theme preferences (Defaults to 'ink' - Deep Ink)
+            const savedTheme = localStorage.getItem('canvas_theme') || 'ink';
+            const savedFontIndex = localStorage.getItem('canvas_fontIndex');
+            const savedAmbient = localStorage.getItem('canvas_ambient');
+
+            setTheme(savedTheme);
+            if (savedFontIndex) {
+                state.fontIndex = parseInt(savedFontIndex, 10);
+                const workspace = document.getElementById('workspace');
+                state.fonts.forEach(f => workspace.classList.remove(f));
+                workspace.classList.add(state.fonts[state.fontIndex]);
+            }
+            if (savedAmbient !== null) {
+                state.ambientOn = savedAmbient === 'true';
+                const ambient = document.getElementById('ambient-container');
+                if (!state.ambientOn) {
+                    ambient.style.opacity = '0';
+                    document.getElementById('ambient-btn').classList.remove('text-emerald-500');
+                }
+            }
+
+            // Load Blocks
+            const savedBlocks = localStorage.getItem('canvas_blocks');
+            if (savedBlocks) {
+                try {
+                    state.blocks = JSON.parse(savedBlocks);
+                    renderAllBlocks();
+                } catch (err) {
+                    console.error("Local storage blocks read error:", err);
+                }
+            }
+
+            // Load Drawings
+            const savedDrawings = localStorage.getItem('canvas_drawings');
+            if (savedDrawings) {
+                try {
+                    state.drawings = JSON.parse(savedDrawings);
+                    redrawSketchCanvas();
+                } catch (err) {
+                    console.error("Local storage sketches read error:", err);
+                }
+            }
+        }
+
+        // --- Page Customization & Styling ---
+        function setTheme(themeName) {
+            const body = document.getElementById('canvas');
+            const ambient = document.getElementById('ambient-container');
+            const theme = themes[themeName];
+            
+            state.theme = themeName;
+            body.style.backgroundColor = theme.bg;
+            body.style.color = theme.text;
+            
+            if (state.ambientOn) {
+                ambient.style.opacity = theme.ambientOpacity;
+            }
+
+            if (themeName === 'ink' || themeName === 'dark') {
+                body.classList.add('dark');
+            } else {
+                body.classList.remove('dark');
+            }
+
+            // Shift sketches colors dynamically to contrast correctly
+            redrawSketchCanvas();
+            saveLocalState();
+        }
+
+        function toggleFont() {
+            const workspace = document.getElementById('workspace');
+            workspace.classList.remove(state.fonts[state.fontIndex]);
+            
+            state.fontIndex = (state.fontIndex + 1) % state.fonts.length;
+            workspace.classList.add(state.fonts[state.fontIndex]);
+            
+            document.querySelectorAll('.canvas-text').forEach(el => {
+                state.fonts.forEach(f => el.classList.remove(f));
+                el.classList.add(state.fonts[state.fontIndex]);
+            });
+            saveLocalState();
+        }
+
+        function toggleAmbient() {
+            const ambient = document.getElementById('ambient-container');
+            const btn = document.getElementById('ambient-btn');
+            
+            state.ambientOn = !state.ambientOn;
+            
+            if (state.ambientOn) {
+                ambient.style.opacity = themes[state.theme].ambientOpacity;
+                btn.classList.add('text-emerald-500');
+                btn.classList.remove('text-neutral-500');
+            } else {
+                ambient.style.opacity = '0';
+                btn.classList.remove('text-emerald-500');
+                btn.classList.add('text-neutral-500');
+            }
+            saveLocalState();
+        }
+
+        // --- Workspace and Notes Rendering ---
+        function renderAllBlocks() {
+            const workspace = document.getElementById('workspace');
+            workspace.querySelectorAll('.canvas-card').forEach(el => el.remove());
+
+            if (state.blocks.length > 0) {
+                const onboarding = document.getElementById('onboarding');
+                if (onboarding) onboarding.style.opacity = '0';
+            }
+
+            state.blocks.forEach(block => {
+                createDOMCard(block);
+            });
+
+            applyLayoutRules();
+        }
+
+        function createDOMCard(block) {
+            const workspace = document.getElementById('workspace');
+            
+            // Card Container
+            const div = document.createElement('div');
+            div.id = block.id;
+            div.className = "absolute group select-none min-w-[240px] max-w-[90%] md:max-w-[400px] rounded-xl p-4 bg-white/50 dark:bg-neutral-900/40 hover:bg-white/90 dark:hover:bg-neutral-900/80 hover:shadow-xl border border-neutral-200/40 dark:border-neutral-800/40 transition-shadow canvas-card";
+            
+            div.style.left = `${block.currentX}px`;
+            div.style.top = `${block.currentY}px`;
+            if (block.width) div.style.width = block.width;
+            if (block.height) div.style.height = block.height;
+
+            // Render integrated drawing canvas inside this card
+            if (block.drawings && block.drawings.length > 0) {
+                const localCanvas = document.createElement('canvas');
+                localCanvas.className = "absolute inset-0 w-full h-full pointer-events-none rounded-xl";
+                
+                div.appendChild(localCanvas);
+                
+                // Draw local sketches offsets onto this sub-canvas
+                setTimeout(() => {
+                    localCanvas.width = div.clientWidth;
+                    localCanvas.height = div.clientHeight;
+                    const lCtx = localCanvas.getContext('2d');
+                    lCtx.clearRect(0, 0, localCanvas.width, localCanvas.height);
+                    
+                    block.drawings.forEach(path => {
+                        if (path.points.length < 1) return;
+                        lCtx.beginPath();
+                        lCtx.strokeStyle = path.strokeColor;
+                        lCtx.lineWidth = path.strokeWidth;
+                        lCtx.lineCap = 'round';
+                        lCtx.lineJoin = 'round';
+                        lCtx.moveTo(path.points[0].x, path.points[0].y);
+                        for (let i = 1; i < path.points.length; i++) {
+                            lCtx.lineTo(path.points[i].x, path.points[i].y);
+                        }
+                        lCtx.stroke();
+                    });
+                }, 0);
+            }
+
+            // Content Textarea (Z-index high to type cleanly on top of drawings)
+            const textarea = document.createElement('textarea');
+            textarea.className = `canvas-text w-full h-full bg-transparent resize-none overflow-hidden focus:outline-none border-none leading-relaxed text-sm z-10 relative ${state.fonts[state.fontIndex]}`;
+            textarea.placeholder = block.drawings ? '' : 'Start typing...';
+            textarea.value = block.text || '';
+            
+            // Height adjust
+            setTimeout(() => {
+                textarea.style.height = 'auto';
+                textarea.style.height = (textarea.scrollHeight) + 'px';
+            }, 0);
+
+            textarea.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = (this.scrollHeight) + 'px';
+                
+                block.text = this.value;
+                saveLocalState();
+            });
+
+            // Handle focus/events
+            textarea.addEventListener('click', (ev) => ev.stopPropagation());
+            textarea.addEventListener('dblclick', (ev) => ev.stopPropagation());
+
+            // Drag elements
+            let isDragging = false;
+            let startX, startY, origX, origY;
+
+            div.addEventListener('mousedown', (ev) => {
+                if (ev.target === textarea || ev.target.closest('.control-button') || state.sketchMode) return;
+                
+                isDragging = true;
+                div.classList.add('dragging');
+                
+                if (state.layoutMode !== 0) {
+                    setLayoutMode(0, "Returned to Freeform Mode");
+                }
+
+                startX = ev.clientX;
+                startY = ev.clientY;
+                origX = parseInt(div.style.left, 10) || 0;
+                origY = parseInt(div.style.top, 10) || 0;
+                
+                document.addEventListener('mousemove', drag);
+                document.addEventListener('mouseup', stopDrag);
+            });
+
+            function drag(ev) {
+                if (!isDragging) return;
+                const dx = ev.clientX - startX;
+                const dy = ev.clientY - startY;
+                
+                const newX = origX + dx;
+                const newY = origY + dy;
+                
+                div.style.left = `${newX}px`;
+                div.style.top = `${newY}px`;
+
+                block.currentX = newX;
+                block.currentY = newY;
+                block.originalX = newX;
+                block.originalY = newY;
+            }
+
+            function stopDrag() {
+                if (isDragging) {
+                    isDragging = false;
+                    div.classList.remove('dragging');
+                    document.removeEventListener('mousemove', drag);
+                    document.removeEventListener('mouseup', stopDrag);
+                    saveLocalState();
+                }
+            }
+
+            // Remove card button
+            const delBtn = document.createElement('button');
+            delBtn.className = "absolute -top-2.5 -right-2.5 hidden group-hover:flex items-center justify-center w-6 h-6 bg-rose-500 hover:bg-rose-600 text-white rounded-full shadow-md hover:scale-110 transition-transform cursor-pointer control-button z-50";
+            delBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+            delBtn.onclick = (ev) => {
+                ev.stopPropagation();
+                
+                div.style.transform = 'scale(0.8)';
+                div.style.opacity = '0';
+                
+                setTimeout(() => {
+                    div.remove();
+                    state.blocks = state.blocks.filter(b => b.id !== block.id);
+                    saveLocalState();
+                    checkEmptyState();
+                }, 300);
+            };
+
+            // Drag handle visual helper
+            const dragHandle = document.createElement('div');
+            dragHandle.className = "absolute -left-3 top-1/2 -translate-y-1/2 cursor-move hidden group-hover:flex items-center justify-center opacity-40 hover:opacity-100 text-neutral-400";
+            dragHandle.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg>';
+
+            div.appendChild(textarea);
+            div.appendChild(delBtn);
+            div.appendChild(dragHandle);
+            workspace.appendChild(div);
+        }
+
+        // Spawn clean note on double-click
+        function spawnTextElement(e) {
+            if (e.target.tagName === 'TEXTAREA' || e.target.closest('.control-button') || e.target.closest('button')) {
+                return;
+            }
+
+            const onboarding = document.getElementById('onboarding');
+            if (onboarding) onboarding.style.opacity = '0';
+
+            const workspace = document.getElementById('workspace');
+            const rect = workspace.getBoundingClientRect();
+            
+            const x = e.clientX - rect.left + workspace.scrollLeft - 100;
+            const y = e.clientY - rect.top + workspace.scrollTop - 20;
+
+            const blockId = `block-${Date.now()}`;
+            const newBlock = {
+                id: blockId,
+                text: '',
+                originalX: x,
+                originalY: y,
+                currentX: x,
+                currentY: y,
+                createdAt: Date.now(),
+                width: '280px',
+                height: 'auto'
+            };
+
+            state.blocks.push(newBlock);
+            createDOMCard(newBlock);
+            saveLocalState();
+
+            setTimeout(() => {
+                const el = document.getElementById(blockId);
+                el?.querySelector('textarea')?.focus();
+            }, 100);
+
+            if (state.layoutMode !== 0) {
+                applyLayoutRules();
+            }
+        }
+
+        function checkEmptyState() {
+            const workspace = document.getElementById('workspace');
+            const elements = workspace.querySelectorAll('.canvas-card');
+            if (elements.length === 0 && state.drawings.length === 0) {
+                const onboarding = document.getElementById('onboarding');
+                if (onboarding) onboarding.style.opacity = '1';
+            }
+        }
+
+        // --- Custom Context Menu Operations ---
+        const contextMenu = document.getElementById('custom-context-menu');
+
+        window.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            
+            // Adjust position for overflow limits
+            const menuWidth = 208;
+            const menuHeight = 180;
+            const posX = (e.clientX + menuWidth > window.innerWidth) ? window.innerWidth - menuWidth - 10 : e.clientX;
+            const posY = (e.clientY + menuHeight > window.innerHeight) ? window.innerHeight - menuHeight - 10 : e.clientY;
+
+            contextMenu.style.left = `${posX}px`;
+            contextMenu.style.top = `${posY}px`;
+            contextMenu.classList.remove('hidden');
+        });
+
+        // Hide context menu on left clicking elsewhere
+        window.addEventListener('click', (e) => {
+            if (!e.target.closest('#custom-context-menu')) {
+                contextMenu.classList.add('hidden');
+            }
+        });
+
+        // Open External Sites Safely (Age-Appropriate Sandbox Compliance)
+        function openCheckers() {
+            window.open('https://checkers.page', '_blank');
+            contextMenu.classList.add('hidden');
+        }
+
+        function exitTab() {
+            contextMenu.classList.add('hidden');
+            try {
+                window.close();
+            } catch (err) {
+                showToast("Press Command+W (Mac) or Ctrl+W (PC) to exit");
+            }
+        }
+
+        function clearCanvas() {
+            contextMenu.classList.add('hidden');
+            state.blocks = [];
+            state.drawings = [];
+            state.sessionDrawings = [];
+            localStorage.removeItem('canvas_blocks');
+            localStorage.removeItem('canvas_drawings');
+            renderAllBlocks();
+            redrawSketchCanvas();
+            checkEmptyState();
+            showToast("Canvas fully cleared");
+        }
+
+        // Export Entire Canvas including written notes and sketches as a PNG Image
+        function exportCanvas() {
+            contextMenu.classList.add('hidden');
+            showToast("Generating image export...");
+
+            // If sketching is active and has pending drawings, pack them in first
+            if (state.sessionDrawings.length > 0) {
+                convertSessionDrawingsToCard();
+            }
+
+            const canvasExport = document.createElement('canvas');
+            canvasExport.width = window.innerWidth * 2; // high res
+            canvasExport.height = window.innerHeight * 2;
+            const ctx = canvasExport.getContext('2d');
+            ctx.scale(2, 2);
+
+            // 1. Draw Background Colors
+            const theme = themes[state.theme];
+            ctx.fillStyle = theme.bg;
+            ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+
+            // 2. Draw Hand-drawn background sketches
+            state.drawings.forEach(path => {
+                if (path.points.length < 1) return;
+                ctx.beginPath();
+                ctx.strokeStyle = path.strokeColor;
+                ctx.lineWidth = path.strokeWidth;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.moveTo(path.points[0].x, path.points[0].y);
+                for (let i = 1; i < path.points.length; i++) {
+                    ctx.lineTo(path.points[i].x, path.points[i].y);
+                }
+                ctx.stroke();
+            });
+
+            // 3. Render Text Blocks and local sketches
+            state.blocks.forEach(block => {
+                const domCard = document.getElementById(block.id);
+                if (!domCard) return;
+
+                const textEl = domCard.querySelector('textarea');
+                const textVal = textEl ? textEl.value : block.text;
+
+                const cardX = block.currentX;
+                const cardY = block.currentY;
+                const width = domCard.offsetWidth || 280;
+                const height = domCard.offsetHeight || 100;
+
+                // Draw note card background box
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.05)';
+                ctx.shadowBlur = 8;
+                ctx.shadowOffsetY = 4;
+                ctx.fillStyle = state.theme === 'ink' || state.theme === 'dark' ? 'rgba(30, 30, 30, 0.95)' : 'rgba(255, 255, 255, 0.95)';
+                
+                // Rounded Card Box
+                const radius = 12;
+                ctx.beginPath();
+                ctx.moveTo(cardX + radius, cardY);
+                ctx.lineTo(cardX + width - radius, cardY);
+                ctx.quadraticCurveTo(cardX + width, cardY, cardX + width, cardY + radius);
+                ctx.lineTo(cardX + width, cardY + height - radius);
+                ctx.quadraticCurveTo(cardX + width, cardY + height, cardX + width - radius, cardY + height);
+                ctx.lineTo(cardX + radius, cardY + height);
+                ctx.quadraticCurveTo(cardX, cardY + height, cardX, cardY + height - radius);
+                ctx.lineTo(cardX, cardY + radius);
+                ctx.quadraticCurveTo(cardX, cardY, cardX + radius, cardY);
+                ctx.closePath();
+                ctx.fill();
+
+                // Reset shadow
+                ctx.shadowColor = 'transparent';
+                ctx.shadowBlur = 0;
+                ctx.shadowOffsetY = 0;
+
+                // Draw Local Sketches Inside Cards
+                if (block.drawings && block.drawings.length > 0) {
+                    block.drawings.forEach(path => {
+                        if (path.points.length < 1) return;
+                        ctx.beginPath();
+                        ctx.strokeStyle = path.strokeColor;
+                        ctx.lineWidth = path.strokeWidth;
+                        ctx.lineCap = 'round';
+                        ctx.lineJoin = 'round';
+                        ctx.moveTo(path.points[0].x + cardX, path.points[0].y + cardY);
+                        for (let i = 1; i < path.points.length; i++) {
+                            ctx.lineTo(path.points[i].x + cardX, path.points[i].y + cardY);
+                        }
+                        ctx.stroke();
+                    });
+                }
+
+                // Draw Text Lines
+                if (textVal) {
+                    ctx.fillStyle = theme.text;
+                    let fontStyle = "14px Inter, sans-serif";
+                    if (state.fontIndex === 1) fontStyle = "italic 14px 'Playfair Display', serif";
+                    if (state.fontIndex === 2) fontStyle = "13px 'Fira Code', monospace";
+                    ctx.font = fontStyle;
+
+                    const lines = textVal.split('\n');
+                    let lineY = cardY + 24;
+                    const lineGap = 20;
+
+                    lines.forEach(line => {
+                        ctx.fillText(line, cardX + 16, lineY, width - 32);
+                        lineY += lineGap;
+                    });
+                }
+            });
+
+            // Convert and trigger download
+            try {
+                const dataUrl = canvasExport.toDataURL('image/png');
+                const link = document.createElement('a');
+                link.download = `canvas-export-${Date.now()}.png`;
+                link.href = dataUrl;
+                link.click();
+                showToast("Canvas PNG downloaded successfully!");
+            } catch (err) {
+                console.error(err);
+                showToast("Failed to compile image.");
+            }
+        }
+
+        // --- Custom Org Layout Systems ---
+        function setLayoutMode(mode, alertMessage) {
+            state.layoutMode = mode;
+            applyLayoutRules();
+            updateHUD(alertMessage);
+        }
+
+        function cycleLayout() {
+            const nextMode = (state.layoutMode + 1) % 3;
+            
+            let message = "";
+            if (nextMode === 0) message = "Restored Unordered Workspace";
+            if (nextMode === 1) message = "Organized in Columns";
+            if (nextMode === 2) message = "Organized Chronologically";
+
+            setLayoutMode(nextMode, message);
+        }
+
+        function applyLayoutRules() {
+            const workspace = document.getElementById('workspace');
+            const width = workspace.clientWidth;
+            
+            if (state.layoutMode === 0) {
+                state.blocks.forEach(block => {
+                    const domCard = document.getElementById(block.id);
+                    if (domCard) {
+                        domCard.style.left = `${block.originalX}px`;
+                        domCard.style.top = `${block.originalY}px`;
+                        domCard.style.width = block.width || '280px';
+                        domCard.style.position = 'absolute';
+                        domCard.style.transform = 'none';
+                    }
+                });
+            } 
+            else if (state.layoutMode === 1) {
+                const cardWidth = 300;
+                const gap = 24;
+                const colsCount = Math.max(1, Math.floor((width - 64) / (cardWidth + gap)));
+                
+                const columnsHeights = Array(colsCount).fill(80);
+                const leftOffset = Math.max(32, (width - (colsCount * (cardWidth + gap) - gap)) / 2);
+
+                state.blocks.forEach(block => {
+                    const domCard = document.getElementById(block.id);
+                    if (domCard) {
+                        const shortestCol = columnsHeights.indexOf(Math.min(...columnsHeights));
+                        const posX = leftOffset + shortestCol * (cardWidth + gap);
+                        const posY = columnsHeights[shortestCol];
+
+                        domCard.style.left = `${posX}px`;
+                        domCard.style.top = `${posY}px`;
+                        domCard.style.width = `${cardWidth}px`;
+
+                        const measuredHeight = domCard.offsetHeight || 120;
+                        columnsHeights[shortestCol] += measuredHeight + gap;
+                        
+                        block.currentX = posX;
+                        block.currentY = posY;
+                    }
+                });
+            } 
+            else if (state.layoutMode === 2) {
+                const sortedBlocks = [...state.blocks].sort((a, b) => a.createdAt - b.createdAt);
+                
+                const cardWidth = 460;
+                let currentY = 120;
+                const gap = 32;
+                const posX = Math.max(24, (width - cardWidth) / 2);
+
+                sortedBlocks.forEach(block => {
+                    const domCard = document.getElementById(block.id);
+                    if (domCard) {
+                        domCard.style.left = `${posX}px`;
+                        domCard.style.top = `${currentY}px`;
+                        domCard.style.width = `${Math.min(cardWidth, width - 48)}px`;
+
+                        const measuredHeight = domCard.offsetHeight || 120;
+                        currentY += measuredHeight + gap;
+
+                        block.currentX = posX;
+                        block.currentY = currentY;
+                    }
+                });
+            }
+        }
+
+        function updateHUD(message) {
+            const badge = document.getElementById('hud-badge');
+            const text = document.getElementById('hud-text');
+            const icon = document.getElementById('layout-icon');
+            const btnText = document.getElementById('layout-btn-text');
+
+            if (message) showToast(message);
+
+            if (state.layoutMode === 0) {
+                badge.style.opacity = "0";
+                badge.style.transform = "scale(0.95) translateY(5px)";
+                icon.setAttribute('data-lucide', 'layout-grid');
+                btnText.innerText = "Organize";
+            } else {
+                badge.style.opacity = "1";
+                badge.style.transform = "scale(1) translateY(0)";
+                
+                if (state.layoutMode === 1) {
+                    text.innerText = "Organized: Column Grid";
+                    icon.setAttribute('data-lucide', 'columns-3');
+                    btnText.innerText = "Columns";
+                } else if (state.layoutMode === 2) {
+                    text.innerText = "Organized: Chronological";
+                    icon.setAttribute('data-lucide', 'clock');
+                    btnText.innerText = "By Date";
+                }
+            }
+            lucide.createIcons();
+        }
+
+        // Custom minimalist status toasts
+        function showToast(text) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = "bg-black/80 dark:bg-white/95 text-white dark:text-black px-4 py-2.5 rounded-xl shadow-lg text-xs font-semibold tracking-wide flex items-center gap-2 transform translate-y-4 opacity-0 transition-all duration-300 pointer-events-auto";
+            toast.innerHTML = `<i data-lucide="info" class="w-3.5 h-3.5"></i> <span>${text}</span>`;
+            
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-4', 'opacity-0');
+            }, 50);
+
+            setTimeout(() => {
+                toast.classList.add('translate-y-2', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // --- Keyboard Hotkeys & Global Handlers ---
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                
+                if (document.activeElement && document.activeElement.tagName === 'TEXTAREA') {
+                    document.activeElement.blur();
+                }
+                
+                cycleLayout();
+            }
+
+            if (e.key === 'Escape') {
+                document.activeElement?.blur();
+            }
+        });
+
+        window.addEventListener('resize', () => {
+            resizeSketchCanvas();
+            if (state.layoutMode !== 0) {
+                applyLayoutRules();
+            }
+        });
+
+        function focusWorkspace(e) {
+            if (e.target === document.getElementById('workspace')) {
+                document.activeElement?.blur();
+            }
+        }
+
+        window.onload = function() {
+            loadLocalState();
+            resizeSketchCanvas();
+        }
+    </script>
+</body>
+</html>
