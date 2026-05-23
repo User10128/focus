@@ -604,6 +604,7 @@
             redrawSketchCanvas();
         }
 
+        // --- Keyboard Hotkeys & Global Handlers ---
         function onPointerUp(e) {
             if (!isDrawing) return;
             isDrawing = false;
@@ -740,7 +741,7 @@
                 currentY: cardY,
                 createdAt: Date.now(),
                 width: `${cardW}px`,
-                height: `${cardH}px`,
+                height: `${cardH}px,`,
                 drawings: localSketches
             };
 
@@ -767,7 +768,10 @@
         function loadLocalState() {
             const dataStr = localStorage.getItem(`canvas_data_${activeNotebookId}`);
             
-            applyNotebookTypeSettings();
+            // Set default empty states before parsing
+            state.blocks = [];
+            state.drawings = [];
+            state.documentText = "";
 
             if (dataStr) {
                 try {
@@ -797,19 +801,18 @@
                             btn.classList.remove('text-neutral-500');
                         }
                     }
-
-                    renderAllBlocks();
-                    redrawSketchCanvas();
                 } catch (err) {
                     console.error("Local storage load error:", err);
                     setTheme('ink');
                 }
             } else {
-                state.documentText = "";
                 setTheme('ink');
-                renderAllBlocks();
-                redrawSketchCanvas();
             }
+
+            // Apply notebook config settings after state properties have been completely parsed
+            applyNotebookTypeSettings();
+            renderAllBlocks();
+            redrawSketchCanvas();
         }
 
         // Apply Notebook Type Configs
