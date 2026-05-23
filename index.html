@@ -166,15 +166,6 @@
     <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] transition-all duration-300 transform translate-y-2 hover:translate-y-0 opacity-40 hover:opacity-100 focus-within:opacity-100 focus-within:translate-y-0">
         <div class="flex items-center gap-4 px-6 py-3 rounded-full bg-white/70 dark:bg-black/40 backdrop-blur-md border border-neutral-200/50 dark:border-neutral-800/50 shadow-lg">
             
-            <!-- Background Theme Toggles -->
-            <div class="flex items-center gap-1.5 border-r border-neutral-300/40 pr-3">
-                <button onclick="setTheme('paper')" class="w-5 h-5 rounded-full bg-[#faf9f6] border border-neutral-300 hover:scale-110 transition-transform" title="Warm Paper"></button>
-                <button onclick="setTheme('pure')" class="w-5 h-5 rounded-full bg-white border border-neutral-300 hover:scale-110 transition-transform" title="Pure White"></button>
-                <button onclick="setTheme('mist')" class="w-5 h-5 rounded-full bg-[#e3e6e8] border border-neutral-300 hover:scale-110 transition-transform" title="Mist Gray"></button>
-                <button onclick="setTheme('ink')" class="w-5 h-5 rounded-full bg-[#1c1c1c] border border-neutral-700 hover:scale-110 transition-transform" title="Deep Ink"></button>
-                <button onclick="setTheme('dark')" class="w-5 h-5 rounded-full bg-[#0a0a0a] border border-neutral-800 hover:scale-110 transition-transform" title="Absolute Midnight"></button>
-            </div>
-
             <!-- Typography Toggle -->
             <button onclick="toggleFont()" class="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded transition-colors text-neutral-500" title="Switch Font">
                 <i data-lucide="type" class="w-4 h-4"></i>
@@ -272,7 +263,6 @@
 
         // Core Canvas State Definition
         const state = {
-            theme: 'ink', 
             fontIndex: 0,
             fonts: ['font-sans', 'font-serif', 'font-mono'],
             ambientOn: true,
@@ -294,14 +284,6 @@
             redoStack: [],
             
             lastPointerType: 'mouse'
-        };
-
-        const themes = {
-            paper: { bg: '#faf9f6', text: '#1c1c1c', ambientOpacity: '1' },
-            pure: { bg: '#ffffff', text: '#111111', ambientOpacity: '0.4' },
-            mist: { bg: '#e5e7eb', text: '#1f2937', ambientOpacity: '0.6' },
-            ink: { bg: '#1c1c1c', text: '#f3f4f6', ambientOpacity: '0.3' },
-            dark: { bg: '#030303', text: '#e5e7eb', ambientOpacity: '0.1' }
         };
 
         // Get active notebook type safely
@@ -710,19 +692,37 @@
             }
 
             const padding = 16;
-            const cardX = minX - padding;
-            const cardY = minY - padding;
-            const cardW = width + (padding * 2);
-            const cardH = height + (padding * 2);
+            const originalCardX = minX - padding;
+            const originalCardY = minY - padding;
+            const originalCardW = width + (padding * 2);
+            const originalCardH = height + (padding * 2);
+
+            // Scale down to prevent cutoff in fixed-width adaptive cards
+            const MAX_CARD_W = 340; 
+            const MAX_CARD_H = 400;
+            let scale = 1.0;
+            
+            if (originalCardW > MAX_CARD_W || originalCardH > MAX_CARD_H) {
+                const scaleW = MAX_CARD_W / originalCardW;
+                const scaleH = MAX_CARD_H / originalCardH;
+                scale = Math.min(scaleW, scaleH);
+            }
+
+            const cardW = originalCardW * scale;
+            const cardH = originalCardH * scale;
+            
+            // Center the shrunken card around original drawing
+            const cardX = originalCardX + (originalCardW - cardW) / 2;
+            const cardY = originalCardY + (originalCardH - cardH) / 2;
 
             const localSketches = state.sessionDrawings.map(path => {
                 return {
                     tool: path.tool,
                     strokeColor: path.strokeColor,
-                    strokeWidth: path.strokeWidth,
+                    strokeWidth: Math.max(1.5, path.strokeWidth * scale),
                     points: path.points.map(pt => ({
-                        x: pt.x - cardX,
-                        y: pt.y - cardY,
+                        x: (pt.x - originalCardX) * scale,
+                        y: (pt.y - originalCardY) * scale,
                         pressure: pt.pressure
                     }))
                 };
@@ -740,8 +740,8 @@
                 currentX: cardX,
                 currentY: cardY,
                 createdAt: Date.now(),
-                width: `${cardW}px`,
-                height: `${cardH}px,`,
+                width: `${Math.max(240, cardW)}px`,
+                height: `${cardH}px`,
                 drawings: localSketches
             };
 
@@ -757,7 +757,6 @@
             const data = {
                 blocks: state.blocks,
                 drawings: state.drawings,
-                theme: state.theme,
                 fontIndex: state.fontIndex,
                 ambientOn: state.ambientOn,
                 documentText: state.documentText
@@ -780,8 +779,6 @@
                     state.drawings = data.drawings || [];
                     state.documentText = data.documentText || "";
                     
-                    setTheme(data.theme || 'ink');
-                    
                     if (data.fontIndex !== undefined) {
                         state.fontIndex = parseInt(data.fontIndex, 10);
                         updateFontsAcrossUI();
@@ -796,17 +793,14 @@
                             btn.classList.remove('text-emerald-500');
                             btn.classList.add('text-neutral-500');
                         } else {
-                            ambient.style.opacity = themes[state.theme].ambientOpacity;
+                            ambient.style.opacity = '0.3';
                             btn.classList.add('text-emerald-500');
                             btn.classList.remove('text-neutral-500');
                         }
                     }
                 } catch (err) {
                     console.error("Local storage load error:", err);
-                    setTheme('ink');
                 }
-            } else {
-                setTheme('ink');
             }
 
             // Apply notebook config settings after state properties have been completely parsed
@@ -1007,30 +1001,6 @@
             checkEmptyState();
         }
 
-        // --- Page Customization & Styling ---
-        function setTheme(themeName) {
-            const body = document.getElementById('canvas');
-            const ambient = document.getElementById('ambient-container');
-            const theme = themes[themeName];
-            
-            state.theme = themeName;
-            body.style.backgroundColor = theme.bg;
-            body.style.color = theme.text;
-            
-            if (state.ambientOn) {
-                ambient.style.opacity = theme.ambientOpacity;
-            }
-
-            if (themeName === 'ink' || themeName === 'dark') {
-                body.classList.add('dark');
-            } else {
-                body.classList.remove('dark');
-            }
-
-            redrawSketchCanvas();
-            saveLocalState();
-        }
-
         function toggleFont() {
             state.fontIndex = (state.fontIndex + 1) % state.fonts.length;
             updateFontsAcrossUI();
@@ -1061,7 +1031,7 @@
             state.ambientOn = !state.ambientOn;
             
             if (state.ambientOn) {
-                ambient.style.opacity = themes[state.theme].ambientOpacity;
+                ambient.style.opacity = '0.3';
                 btn.classList.add('text-emerald-500');
                 btn.classList.remove('text-neutral-500');
             } else {
@@ -1105,13 +1075,18 @@
 
             if (block.drawings && block.drawings.length > 0) {
                 const localCanvas = document.createElement('canvas');
-                localCanvas.className = "absolute inset-0 w-full h-full pointer-events-none rounded-xl";
+                localCanvas.className = "absolute top-0 left-0 w-full pointer-events-none rounded-xl";
                 
                 div.appendChild(localCanvas);
                 
                 setTimeout(() => {
-                    localCanvas.width = div.clientWidth;
-                    localCanvas.height = div.clientHeight;
+                    const parsedW = parseFloat(block.width) || div.clientWidth;
+                    const parsedH = parseFloat(block.height) || div.clientHeight;
+                    
+                    localCanvas.width = parsedW;
+                    localCanvas.height = parsedH;
+                    localCanvas.style.aspectRatio = `${parsedW} / ${parsedH}`;
+                    
                     const lCtx = localCanvas.getContext('2d');
                     lCtx.clearRect(0, 0, localCanvas.width, localCanvas.height);
                     
@@ -1352,10 +1327,10 @@
                 const ctx = canvasExport.getContext('2d');
                 ctx.scale(2, 2);
 
-                ctx.fillStyle = state.theme === 'ink' || state.theme === 'dark' ? '#121212' : '#ffffff';
+                ctx.fillStyle = '#121212';
                 ctx.fillRect(0, 0, docContainer.offsetWidth, docContainer.offsetHeight);
 
-                ctx.fillStyle = state.theme === 'ink' || state.theme === 'dark' ? '#ffffff' : '#111111';
+                ctx.fillStyle = '#ffffff';
                 let fontStyle = "16px Inter, sans-serif";
                 if (state.fontIndex === 1) fontStyle = "16px 'Playfair Display', serif";
                 if (state.fontIndex === 2) fontStyle = "15px 'Fira Code', monospace";
@@ -1429,8 +1404,7 @@
             const ctx = canvasExport.getContext('2d');
             ctx.scale(2, 2);
 
-            const theme = themes[state.theme];
-            ctx.fillStyle = theme.bg;
+            ctx.fillStyle = '#1c1c1c';
             ctx.fillRect(0, 0, expW, expH);
 
             ctx.translate(-minX, -minY);
@@ -1453,7 +1427,7 @@
                 ctx.shadowColor = 'rgba(0, 0, 0, 0.05)';
                 ctx.shadowBlur = 8;
                 ctx.shadowOffsetY = 4;
-                ctx.fillStyle = state.theme === 'ink' || state.theme === 'dark' ? 'rgba(30, 30, 30, 0.95)' : 'rgba(255, 255, 255, 0.95)';
+                ctx.fillStyle = 'rgba(30, 30, 30, 0.95)';
                 
                 const radius = 12;
                 ctx.beginPath();
@@ -1470,13 +1444,19 @@
                 ctx.fill();
                 ctx.restore();
 
+                let drawScale = 1.0;
+                if (block.width) {
+                    drawScale = width / parseFloat(block.width);
+                }
+
                 if (block.drawings && block.drawings.length > 0) {
                     block.drawings.forEach(path => {
                         drawSinglePath(ctx, {
                             ...path,
+                            strokeWidth: path.strokeWidth * drawScale,
                             points: path.points.map(pt => ({
-                                x: pt.x + cardX,
-                                y: pt.y + cardY,
+                                x: (pt.x * drawScale) + cardX,
+                                y: (pt.y * drawScale) + cardY,
                                 pressure: pt.pressure
                             }))
                         });
@@ -1484,7 +1464,7 @@
                 }
 
                 if (textVal) {
-                    ctx.fillStyle = theme.text;
+                    ctx.fillStyle = '#f3f4f6';
                     let fontStyle = "14px Inter, sans-serif";
                     if (state.fontIndex === 1) fontStyle = "italic 14px 'Playfair Display', serif";
                     if (state.fontIndex === 2) fontStyle = "13px 'Fira Code', monospace";
