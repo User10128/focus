@@ -119,9 +119,9 @@
 
             <!-- Word Processor Page Layout Container (Used for Infinite Page Doc) -->
             <div id="doc-layout-container" class="absolute inset-x-0 top-32 z-20 flex flex-col items-center justify-start px-4 md:px-12 hidden">
-                <div class="w-full max-w-4xl bg-white dark:bg-neutral-900/90 shadow-2xl rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 p-8 md:p-16 min-h-[1200px] text-left transition-all duration-300 relative">
+                <div class="w-full max-w-4xl bg-white dark:bg-neutral-900/90 shadow-2xl rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 p-8 md:p-16 h-auto text-left transition-all duration-300 relative mb-32">
                     <!-- Standard Margins / Writing Area -->
-                    <textarea id="word-processor" class="w-full min-h-[1000px] bg-transparent resize-none focus:outline-none border-none leading-relaxed text-base text-neutral-800 dark:text-neutral-100 placeholder-neutral-400/70" placeholder="Start typing your document here..."></textarea>
+                    <textarea id="word-processor" class="w-full min-h-[1000px] bg-transparent resize-none focus:outline-none border-none leading-relaxed text-base text-neutral-800 dark:text-neutral-100 placeholder-neutral-400/70 overflow-hidden" placeholder="Start typing your document here..."></textarea>
                 </div>
             </div>
 
@@ -815,6 +815,15 @@
             redrawSketchCanvas();
         }
 
+        // Dynamically adjust the Word Processor page and textarea height to grow with content
+        function adjustWordProcessorHeight() {
+            const wp = document.getElementById('word-processor');
+            if (wp) {
+                wp.style.height = 'auto';
+                wp.style.height = wp.scrollHeight + 'px';
+            }
+        }
+
         // Apply Notebook Type Configs
         function applyNotebookTypeSettings() {
             const type = getActiveNotebookType();
@@ -853,6 +862,7 @@
                 // Bind Document View & Input sync
                 const wp = document.getElementById('word-processor');
                 wp.value = state.documentText;
+                adjustWordProcessorHeight();
                 wp.focus();
             } 
             else if (type === 'sketch') {
@@ -912,6 +922,7 @@
         wordProcessor.addEventListener('input', function() {
             state.documentText = this.value;
             saveLocalState();
+            adjustWordProcessorHeight();
         });
 
         // --- Notebook Modal System ---
@@ -1040,6 +1051,7 @@
                 state.fonts.forEach(f => el.classList.remove(f));
                 el.classList.add(state.fonts[state.fontIndex]);
             });
+            adjustWordProcessorHeight();
         }
 
         function toggleAmbient() {
@@ -1292,6 +1304,7 @@
             contextMenu.classList.add('hidden');
         }
 
+        // Exit handler helper
         function exitTab() {
             contextMenu.classList.add('hidden');
             
@@ -1312,7 +1325,10 @@
             state.documentText = "";
             
             const wp = document.getElementById('word-processor');
-            if (wp) wp.value = "";
+            if (wp) {
+                wp.value = "";
+                adjustWordProcessorHeight();
+            }
 
             document.getElementById('cards-container').innerHTML = '';
             redrawSketchCanvas();
@@ -1678,6 +1694,7 @@
             sketchCanvas.width = workspace.clientWidth;
             sketchCanvas.height = 5000;
             redrawSketchCanvas();
+            adjustWordProcessorHeight();
             if (state.layoutMode !== 0) {
                 applyLayoutRules();
             }
