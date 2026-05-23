@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Slate</title>
-    <link rel="icon" href="/favicon.png">
+    <link class="rounded-full" rel="icon" href="/favicon.png">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Lucide Icons for elegant minimalist UI -->
@@ -85,6 +85,11 @@
         <div class="ambient-glow absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-blue-200 animate-[pulse_16s_infinite_2s]"></div>
     </div>
 
+    <!-- Floating Sketchbook Settings button -->
+    <button id="sketchbook-settings-btn" onclick="openSketchbookSettings(event)" class="fixed top-6 left-6 z-[60] p-2.5 bg-white/85 dark:bg-[#121212]/90 backdrop-blur-md border border-neutral-200/50 dark:border-neutral-800/50 rounded-xl shadow-lg transition-all duration-300 hover:scale-105 active:scale-95 hidden" title="Settings Menu">
+        <i data-lucide="settings" class="w-5 h-5 text-neutral-600 dark:text-neutral-300"></i>
+    </button>
+
     <!-- Active Layout Mode HUD Badge -->
     <div class="fixed top-6 left-1/2 -translate-x-1/2 z-50">
         <div id="hud-badge" class="px-4 py-1.5 rounded-full bg-white/80 dark:bg-black/40 border border-neutral-200/50 dark:border-neutral-800/50 backdrop-blur-md shadow-sm text-xs font-medium tracking-wide flex items-center gap-2 transition-all duration-300 transform scale-95 opacity-0 pointer-events-none">
@@ -102,20 +107,28 @@
             <!-- Welcome Prompt -->
             <div id="onboarding" class="absolute top-32 left-1/2 -translate-x-1/2 w-[600px] text-center pointer-events-none transition-opacity duration-1000 select-none z-10">
                 <h1 class="font-serif text-3xl md:text-4xl italic text-neutral-400 mb-6 font-light">A clean space for your thoughts.</h1>
-                <p class="font-sans text-xs md:text-sm tracking-widest text-neutral-400/80 uppercase mb-2">Double-click anywhere to type. Drag elements to move.</p>
+                <p id="onboarding-text-guide" class="font-sans text-xs md:text-sm tracking-widest text-neutral-400/80 uppercase mb-2">Double-click anywhere to type. Drag elements to move.</p>
                 <p class="font-mono text-[10px] text-neutral-400/60 uppercase">Press <span class="px-1.5 py-0.5 rounded bg-neutral-900 text-white font-bold select-none">Tab</span> to cycle layouts &bull; Auto-saves locally</p>
             </div>
 
             <!-- Stylus / Drawing Layer Canvas -->
             <canvas id="sketch-canvas" class="absolute inset-0 pointer-events-none z-30" style="touch-action: none;"></canvas>
             
-            <!-- Floating Cards Rendered Here -->
+            <!-- Floating Cards Rendered Here (Used for Adaptive Space) -->
             <div id="cards-container" class="absolute inset-0 z-20 pointer-events-none"></div>
+
+            <!-- Word Processor Page Layout Container (Used for Infinite Page Doc) -->
+            <div id="doc-layout-container" class="absolute inset-x-0 top-32 z-20 flex flex-col items-center justify-start px-4 md:px-12 hidden">
+                <div class="w-full max-w-4xl bg-white dark:bg-neutral-900/90 shadow-2xl rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 p-8 md:p-16 min-h-[1200px] text-left transition-all duration-300 relative">
+                    <!-- Standard Margins / Writing Area -->
+                    <textarea id="word-processor" class="w-full min-h-[1000px] bg-transparent resize-none focus:outline-none border-none leading-relaxed text-base text-neutral-800 dark:text-neutral-100 placeholder-neutral-400/70" placeholder="Start typing your document here..."></textarea>
+                </div>
+            </div>
 
         </div>
     </div>
 
-    <!-- Floating Sketch Sub-Toolbar (Visible only in drawing mode) -->
+    <!-- Floating Sketch Sub-Toolbar (Visible in drawing modes) -->
     <div id="sketch-toolbar" class="fixed top-6 right-6 z-[60] flex items-center gap-2 px-4 py-2 bg-white/85 dark:bg-neutral-900/90 backdrop-blur-md border border-neutral-200/50 dark:border-neutral-800/50 rounded-2xl shadow-lg transition-all duration-300 transform translate-y-[-20px] opacity-0 pointer-events-none">
         <!-- Undo/Redo -->
         <button onclick="undoStroke()" class="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg text-neutral-500 transition-colors" title="Undo (Ctrl+Z)">
@@ -168,7 +181,7 @@
             </button>
 
             <!-- Layout Organizer Button -->
-            <button onclick="cycleLayout()" class="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded transition-colors text-indigo-500 flex items-center gap-1.5" title="Cycle Layout Mode (Tab Key)">
+            <button id="organize-btn" onclick="cycleLayout()" class="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded transition-colors text-indigo-500 flex items-center gap-1.5" title="Cycle Layout Mode (Tab Key)">
                 <i id="layout-icon" data-lucide="layout-grid" class="w-4 h-4"></i>
                 <span id="layout-btn-text" class="text-[10px] font-bold uppercase tracking-wider hidden md:inline-block font-sans">Organize</span>
             </button>
@@ -216,13 +229,23 @@
         <div class="bg-white dark:bg-[#121212] w-full max-w-sm rounded-2xl p-6 shadow-2xl border border-neutral-200/60 dark:border-neutral-800/60 relative">
             <h2 class="text-xl font-serif mb-4 dark:text-neutral-200">Your Notebooks</h2>
             
-            <div id="notebook-list" class="flex flex-col gap-2 max-h-[300px] overflow-y-auto mb-4 no-scrollbar pr-2">
+            <div id="notebook-list" class="flex flex-col gap-2 max-h-[260px] overflow-y-auto mb-4 no-scrollbar pr-2">
                 <!-- Dynamically populated notebook options -->
             </div>
             
-            <div class="flex gap-2 mt-4 pt-4 border-t border-neutral-200/50 dark:border-neutral-800/50">
-                <input type="text" id="new-notebook-name" placeholder="New Notebook Name..." class="flex-1 px-3 py-2.5 rounded-lg bg-neutral-100 dark:bg-[#1c1c1c] dark:text-white border-none outline-none text-sm placeholder-neutral-400">
-                <button onclick="createNewNotebook()" class="px-4 py-2 bg-indigo-500 text-white rounded-lg text-sm font-medium hover:bg-indigo-600 transition-colors shadow-sm">Create</button>
+            <div class="flex flex-col gap-3 mt-4 pt-4 border-t border-neutral-200/50 dark:border-neutral-800/50">
+                <input type="text" id="new-notebook-name" placeholder="New Notebook Name..." class="w-full px-3 py-2.5 rounded-lg bg-neutral-100 dark:bg-[#1c1c1c] dark:text-white border-none outline-none text-sm placeholder-neutral-400">
+                
+                <div class="flex flex-col gap-1">
+                    <label class="text-[9px] uppercase tracking-wider text-neutral-400 font-bold font-sans">Notebook Type</label>
+                    <select id="new-notebook-type" class="w-full px-3 py-2 bg-neutral-100 dark:bg-[#1c1c1c] dark:text-white text-xs border-none rounded-lg outline-none cursor-pointer py-2.5">
+                        <option value="adaptive">Adaptive Space (Text & Auto-boxing Drawing)</option>
+                        <option value="document">Infinite Page Doc (Google Doc Layout)</option>
+                        <option value="sketch">Pure Sketchbook (Always Ink Drawing)</option>
+                    </select>
+                </div>
+                
+                <button onclick="createNewNotebook()" class="w-full py-2.5 bg-indigo-500 text-white rounded-lg text-sm font-medium hover:bg-indigo-600 transition-colors shadow-sm">Create Notebook</button>
             </div>
             
             <button onclick="closeNotebookModal()" class="absolute top-5 right-5 text-neutral-400 hover:text-neutral-800 dark:hover:text-white transition-colors">
@@ -244,7 +267,7 @@
         lucide.createIcons();
 
         // Database logic
-        let notebooks = JSON.parse(localStorage.getItem('canvas_notebooks')) || [{id: 'default', name: 'Main Sketchbook'}];
+        let notebooks = JSON.parse(localStorage.getItem('canvas_notebooks')) || [{id: 'default', name: 'Main Sketchbook', type: 'adaptive'}];
         let activeNotebookId = localStorage.getItem('canvas_active_notebook_id') || 'default';
 
         // Core Canvas State Definition
@@ -260,6 +283,7 @@
             sessionDrawings: [], 
             currentPath: null,
             inactivityTimeout: null,
+            documentText: "", // Master text cache for Page Doc layout
             
             // Stylus 
             brushTool: 'pen', 
@@ -279,6 +303,12 @@
             ink: { bg: '#1c1c1c', text: '#f3f4f6', ambientOpacity: '0.3' },
             dark: { bg: '#030303', text: '#e5e7eb', ambientOpacity: '0.1' }
         };
+
+        // Get active notebook type safely
+        function getActiveNotebookType() {
+            const active = notebooks.find(nb => nb.id === activeNotebookId);
+            return active ? (active.type || 'adaptive') : 'adaptive';
+        }
 
         // --- Drawing Engine Setup ---
         const sketchCanvas = document.getElementById('sketch-canvas');
@@ -365,6 +395,15 @@
 
         // Toggle Drawing / Sketching Mode
         function toggleSketchMode(forceState = null) {
+            const type = getActiveNotebookType();
+            if (type === 'document') {
+                showToast("Drawing is disabled in Text-Only Notebook Mode");
+                return;
+            }
+            if (type === 'sketch') {
+                return;
+            }
+
             state.sketchMode = forceState !== null ? forceState : !state.sketchMode;
             const sketchBtn = document.getElementById('sketch-btn');
             const sketchBtnText = document.getElementById('sketch-btn-text');
@@ -489,8 +528,11 @@
         }
 
         function onPointerDown(e) {
+            const type = getActiveNotebookType();
+            if (type === 'document') return; 
             if (!state.sketchMode) return;
-            if (e.target.closest('button') || e.target.closest('input') || e.target.closest('#custom-context-menu') || e.target.closest('#sketch-toolbar')) {
+            
+            if (e.target.closest('button') || e.target.closest('input') || e.target.closest('#custom-context-menu') || e.target.closest('#sketch-toolbar') || e.target.closest('#notebook-modal')) {
                 return;
             }
 
@@ -569,8 +611,13 @@
 
             if (state.currentPath && state.currentPath.points.length > 0) {
                 state.drawings.push(state.currentPath);
-                state.sessionDrawings.push(state.currentPath);
                 
+                const type = getActiveNotebookType();
+                if (type === 'adaptive') {
+                    state.sessionDrawings.push(state.currentPath);
+                    startBoxingTimer();
+                }
+
                 state.undoStack.push({
                     type: 'stroke',
                     data: state.currentPath
@@ -592,6 +639,8 @@
         sketchCanvas.addEventListener('pointercancel', onPointerUp, { passive: false });
 
         window.addEventListener('dblclick', (e) => {
+            const type = getActiveNotebookType();
+            if (type === 'sketch' || type === 'document') return; 
             if (state.sketchMode) return;
             spawnTextElement(e);
         });
@@ -709,7 +758,8 @@
                 drawings: state.drawings,
                 theme: state.theme,
                 fontIndex: state.fontIndex,
-                ambientOn: state.ambientOn
+                ambientOn: state.ambientOn,
+                documentText: state.documentText
             };
             localStorage.setItem(`canvas_data_${activeNotebookId}`, JSON.stringify(data));
         }
@@ -717,19 +767,20 @@
         function loadLocalState() {
             const dataStr = localStorage.getItem(`canvas_data_${activeNotebookId}`);
             
+            applyNotebookTypeSettings();
+
             if (dataStr) {
                 try {
                     const data = JSON.parse(dataStr);
                     state.blocks = data.blocks || [];
                     state.drawings = data.drawings || [];
+                    state.documentText = data.documentText || "";
                     
                     setTheme(data.theme || 'ink');
                     
                     if (data.fontIndex !== undefined) {
                         state.fontIndex = parseInt(data.fontIndex, 10);
-                        const workspace = document.getElementById('workspace');
-                        state.fonts.forEach(f => workspace.classList.remove(f));
-                        workspace.classList.add(state.fonts[state.fontIndex]);
+                        updateFontsAcrossUI();
                     }
 
                     if (data.ambientOn !== undefined) {
@@ -754,9 +805,111 @@
                     setTheme('ink');
                 }
             } else {
+                state.documentText = "";
                 setTheme('ink');
+                renderAllBlocks();
+                redrawSketchCanvas();
             }
         }
+
+        // Apply Notebook Type Configs
+        function applyNotebookTypeSettings() {
+            const type = getActiveNotebookType();
+            const sketchBtn = document.getElementById('sketch-btn');
+            const sketchToolbar = document.getElementById('sketch-toolbar');
+            const workspace = document.getElementById('workspace');
+            const guide = document.getElementById('onboarding-text-guide');
+            const organizeBtn = document.getElementById('organize-btn');
+            const docContainer = document.getElementById('doc-layout-container');
+            const settingsBtn = document.getElementById('sketchbook-settings-btn');
+
+            stopBoxingTimer();
+            state.sessionDrawings = [];
+
+            // Reset visibility
+            settingsBtn.classList.add('hidden');
+
+            if (type === 'document') {
+                // Infinite page word processor mode
+                state.sketchMode = false;
+                document.body.classList.remove('sketching-mode');
+                sketchCanvas.style.pointerEvents = 'none';
+                sketchCanvas.classList.remove('pointer-events-auto');
+                workspace.classList.remove('drawing-active');
+                
+                sketchBtn.classList.add('hidden'); 
+                organizeBtn.classList.add('hidden');
+                sketchToolbar.classList.add('opacity-0', 'pointer-events-none', 'translate-y-[-20px]');
+                sketchToolbar.classList.remove('opacity-100', 'pointer-events-auto', 'translate-y-0');
+                
+                docContainer.classList.remove('hidden');
+                
+                guide.innerText = "Write and format cleanly on a centered elegant page.";
+                document.getElementById('instruction-txt').innerText = "Infinite Page Doc Mode";
+
+                // Bind Document View & Input sync
+                const wp = document.getElementById('word-processor');
+                wp.value = state.documentText;
+                wp.focus();
+            } 
+            else if (type === 'sketch') {
+                // Sketchbook only layout (shows settings button)
+                state.sketchMode = true;
+                document.body.classList.add('sketching-mode');
+                sketchCanvas.style.pointerEvents = 'auto';
+                sketchCanvas.classList.add('pointer-events-auto');
+                workspace.classList.add('drawing-active');
+                
+                sketchBtn.classList.add('hidden'); 
+                organizeBtn.classList.add('hidden'); 
+                docContainer.classList.add('hidden');
+                settingsBtn.classList.remove('hidden'); // Exclusively show settings button here
+                
+                // Keep sketch toolbar open permanently
+                sketchToolbar.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-[-20px]');
+                sketchToolbar.classList.add('opacity-100', 'pointer-events-auto', 'translate-y-0');
+                
+                guide.innerText = "Always Drawing. Use stylus/pointer to sketch infinite canvas.";
+                document.getElementById('instruction-txt').innerText = "Pure Sketchbook Mode";
+            } 
+            else {
+                // Adaptive Space
+                state.sketchMode = false;
+                document.body.classList.remove('sketching-mode');
+                sketchCanvas.style.pointerEvents = 'none';
+                sketchCanvas.classList.remove('pointer-events-auto');
+                workspace.classList.remove('drawing-active');
+                
+                sketchBtn.classList.remove('hidden'); 
+                organizeBtn.classList.remove('hidden');
+                docContainer.classList.add('hidden');
+                
+                sketchToolbar.classList.add('opacity-0', 'pointer-events-none', 'translate-y-[-20px]');
+                sketchToolbar.classList.remove('opacity-100', 'pointer-events-auto', 'translate-y-0');
+                
+                guide.innerText = "Double-click anywhere to type. Drag elements to move.";
+                document.getElementById('instruction-txt').innerText = "Right-click for options";
+            }
+        }
+
+        // --- Floating Sketchbook Settings Action ---
+        function openSketchbookSettings(event) {
+            event.stopPropagation();
+            const btn = document.getElementById('sketchbook-settings-btn');
+            const rect = btn.getBoundingClientRect();
+            
+            const contextMenu = document.getElementById('custom-context-menu');
+            contextMenu.style.left = `${rect.left}px`;
+            contextMenu.style.top = `${rect.bottom + 10}px`;
+            contextMenu.classList.remove('hidden');
+        }
+
+        // --- Document Word Processor Text Bindings ---
+        const wordProcessor = document.getElementById('word-processor');
+        wordProcessor.addEventListener('input', function() {
+            state.documentText = this.value;
+            saveLocalState();
+        });
 
         // --- Notebook Modal System ---
         function openNotebookModal() {
@@ -774,14 +927,34 @@
             list.innerHTML = '';
             notebooks.forEach(nb => {
                 const item = document.createElement('div');
-                item.className = `flex items-center justify-between p-3 rounded-xl cursor-pointer transition-colors ${nb.id === activeNotebookId ? 'bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800' : 'hover:bg-neutral-100 dark:hover:bg-neutral-800/80'}`;
+                item.className = `flex flex-col gap-1.5 p-3 rounded-xl cursor-pointer transition-colors ${nb.id === activeNotebookId ? 'bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800' : 'hover:bg-neutral-100 dark:hover:bg-neutral-800/80'}`;
+                
+                const header = document.createElement('div');
+                header.className = "flex items-center justify-between pointer-events-none";
                 
                 const title = document.createElement('span');
                 title.className = `font-medium text-sm ${nb.id === activeNotebookId ? 'text-indigo-600 dark:text-indigo-400' : 'text-neutral-700 dark:text-neutral-300'}`;
                 title.innerText = nb.name;
                 
+                const badge = document.createElement('span');
+                badge.className = "text-[9px] px-1.5 py-0.5 rounded uppercase font-bold tracking-wider";
+                const type = nb.type || 'adaptive';
+                if (type === 'document') {
+                    badge.innerText = "Page Doc";
+                    badge.className += " bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400";
+                } else if (type === 'sketch') {
+                    badge.innerText = "Sketchbook";
+                    badge.className += " bg-purple-100 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400";
+                } else {
+                    badge.innerText = "Adaptive";
+                    badge.className += " bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400";
+                }
+                
+                header.appendChild(title);
+                header.appendChild(badge);
+                item.appendChild(header);
+                
                 item.onclick = () => switchNotebook(nb.id);
-                item.appendChild(title);
                 list.appendChild(item);
             });
         }
@@ -789,10 +962,12 @@
         function createNewNotebook() {
             const nameInput = document.getElementById('new-notebook-name');
             const name = nameInput.value.trim();
+            const typeSelect = document.getElementById('new-notebook-type');
+            const type = typeSelect.value;
             if (!name) return;
             
             const newId = 'nb_' + Date.now();
-            notebooks.push({id: newId, name});
+            notebooks.push({id: newId, name, type});
             localStorage.setItem('canvas_notebooks', JSON.stringify(notebooks));
             nameInput.value = '';
             switchNotebook(newId);
@@ -808,6 +983,7 @@
             state.sessionDrawings = [];
             state.undoStack = [];
             state.redoStack = [];
+            state.documentText = "";
             document.getElementById('cards-container').innerHTML = '';
             sCtx.clearRect(0, 0, sketchCanvas.width, sketchCanvas.height);
             
@@ -816,7 +992,6 @@
             showToast("Notebook Opened");
             checkEmptyState();
         }
-
 
         // --- Page Customization & Styling ---
         function setTheme(themeName) {
@@ -843,17 +1018,25 @@
         }
 
         function toggleFont() {
-            const workspace = document.getElementById('workspace');
-            workspace.classList.remove(state.fonts[state.fontIndex]);
-            
             state.fontIndex = (state.fontIndex + 1) % state.fonts.length;
+            updateFontsAcrossUI();
+            saveLocalState();
+        }
+
+        function updateFontsAcrossUI() {
+            const workspace = document.getElementById('workspace');
+            state.fonts.forEach(f => workspace.classList.remove(f));
             workspace.classList.add(state.fonts[state.fontIndex]);
             
+            // Sync Word Processor typing fonts
+            const wordProcessor = document.getElementById('word-processor');
+            state.fonts.forEach(f => wordProcessor.classList.remove(f));
+            wordProcessor.classList.add(state.fonts[state.fontIndex]);
+
             document.querySelectorAll('.canvas-text').forEach(el => {
                 state.fonts.forEach(f => el.classList.remove(f));
                 el.classList.add(state.fonts[state.fontIndex]);
             });
-            saveLocalState();
         }
 
         function toggleAmbient() {
@@ -879,16 +1062,18 @@
             const container = document.getElementById('cards-container');
             container.innerHTML = '';
 
-            if (state.blocks.length > 0) {
+            const type = getActiveNotebookType();
+            if (state.blocks.length > 0 || type === 'document') {
                 const onboarding = document.getElementById('onboarding');
                 if (onboarding) onboarding.style.opacity = '0';
             }
 
-            state.blocks.forEach(block => {
-                createDOMCard(block);
-            });
-
-            applyLayoutRules();
+            if (type !== 'document') {
+                state.blocks.forEach(block => {
+                    createDOMCard(block);
+                });
+                applyLayoutRules();
+            }
         }
 
         function createDOMCard(block) {
@@ -1062,6 +1247,13 @@
         }
 
         function checkEmptyState() {
+            const type = getActiveNotebookType();
+            if (type === 'document') {
+                const onboarding = document.getElementById('onboarding');
+                if (onboarding) onboarding.style.opacity = '0';
+                return;
+            }
+            
             const elements = document.getElementById('cards-container').querySelectorAll('.canvas-card');
             if (elements.length === 0 && state.drawings.length === 0) {
                 const onboarding = document.getElementById('onboarding');
@@ -1073,7 +1265,7 @@
         const contextMenu = document.getElementById('custom-context-menu');
 
         window.addEventListener('contextmenu', (e) => {
-            if (state.sketchMode) return; 
+            if (state.sketchMode && getActiveNotebookType() === 'sketch') return; 
             
             e.preventDefault();
             const menuWidth = 208;
@@ -1087,7 +1279,7 @@
         });
 
         window.addEventListener('click', (e) => {
-            if (!e.target.closest('#custom-context-menu')) {
+            if (!e.target.closest('#custom-context-menu') && !e.target.closest('#sketchbook-settings-btn')) {
                 contextMenu.classList.add('hidden');
             }
         });
@@ -1101,9 +1293,7 @@
             contextMenu.classList.add('hidden');
             
             try {
-                // Opens the current page as "self" and then closes it
-window.close();
-
+                window.close();
             } catch(e) {}
             // Graceful fallback to exit immersive content
             window.location.href = 'https://checkers.page/error';
@@ -1116,17 +1306,63 @@ window.close();
             state.sessionDrawings = [];
             state.undoStack = [];
             state.redoStack = [];
+            state.documentText = "";
             
+            const wp = document.getElementById('word-processor');
+            if (wp) wp.value = "";
+
             document.getElementById('cards-container').innerHTML = '';
             redrawSketchCanvas();
             saveLocalState();
             checkEmptyState();
-            showToast("Canvas fully cleared");
+            showToast("Workspace cleared");
         }
 
         function exportCanvas() {
             contextMenu.classList.add('hidden');
             showToast("Generating high resolution image export...");
+
+            const type = getActiveNotebookType();
+
+            if (type === 'document') {
+                // Specialized Word Document PNG Generation
+                const docContainer = document.getElementById('doc-layout-container').firstElementChild;
+                const canvasExport = document.createElement('canvas');
+                canvasExport.width = docContainer.offsetWidth * 2;
+                canvasExport.height = docContainer.offsetHeight * 2;
+                const ctx = canvasExport.getContext('2d');
+                ctx.scale(2, 2);
+
+                ctx.fillStyle = state.theme === 'ink' || state.theme === 'dark' ? '#121212' : '#ffffff';
+                ctx.fillRect(0, 0, docContainer.offsetWidth, docContainer.offsetHeight);
+
+                ctx.fillStyle = state.theme === 'ink' || state.theme === 'dark' ? '#ffffff' : '#111111';
+                let fontStyle = "16px Inter, sans-serif";
+                if (state.fontIndex === 1) fontStyle = "16px 'Playfair Display', serif";
+                if (state.fontIndex === 2) fontStyle = "15px 'Fira Code', monospace";
+                ctx.font = fontStyle;
+
+                const lines = state.documentText.split('\n');
+                let lineY = 64;
+                const lineGap = 24;
+
+                lines.forEach(line => {
+                    ctx.fillText(line, 64, lineY, docContainer.offsetWidth - 128);
+                    lineY += lineGap;
+                });
+
+                try {
+                    const dataUrl = canvasExport.toDataURL('image/png');
+                    const link = document.createElement('a');
+                    link.download = `slate-document-${Date.now()}.png`;
+                    link.href = dataUrl;
+                    link.click();
+                    showToast("Document saved as image!");
+                } catch (err) {
+                    showToast("Failed to compile document image.");
+                }
+                return;
+            }
 
             if (state.sessionDrawings.length > 0) {
                 convertSessionDrawingsToCard();
@@ -1178,7 +1414,6 @@ window.close();
             ctx.fillStyle = theme.bg;
             ctx.fillRect(0, 0, expW, expH);
 
-            // Translate matrix locally to center drawings from coordinate map
             ctx.translate(-minX, -minY);
 
             state.drawings.forEach(path => drawSinglePath(ctx, path));
@@ -1268,6 +1503,8 @@ window.close();
         }
 
         function cycleLayout() {
+            const type = getActiveNotebookType();
+            if (type === 'sketch' || type === 'document') return; 
             const nextMode = (state.layoutMode + 1) % 3;
             
             let message = "";
@@ -1300,7 +1537,7 @@ window.close();
                 const usableWidth = Math.min(1200, viewWidth - 64);
                 const colsCount = Math.max(1, Math.floor(usableWidth / (cardWidth + gap)));
                 
-                const columnsHeights = Array(colsCount).fill(120); // Start near the top
+                const columnsHeights = Array(colsCount).fill(120); 
                 const leftOffset = Math.max(24, (viewWidth - ((colsCount * (cardWidth + gap)) - gap)) / 2);
 
                 state.blocks.forEach(block => {
@@ -1326,7 +1563,7 @@ window.close();
                 const sortedBlocks = [...state.blocks].sort((a, b) => a.createdAt - b.createdAt);
                 
                 const cardWidth = 460;
-                let currentY = 120; // Start near the top
+                let currentY = 120; 
                 const gap = 32;
                 const posX = Math.max(24, (viewWidth - cardWidth) / 2);
 
@@ -1401,7 +1638,7 @@ window.close();
             if (e.key === 'Tab') {
                 e.preventDefault();
                 
-                if (document.activeElement && document.activeElement.tagName === 'TEXTAREA') {
+                if (document.activeElement && (document.activeElement.tagName === 'TEXTAREA' || document.activeElement.id === 'word-processor')) {
                     document.activeElement.blur();
                 }
                 
@@ -1410,7 +1647,10 @@ window.close();
 
             if (e.key === 'Escape') {
                 if (state.sketchMode) {
-                    toggleSketchMode(false);
+                    const type = getActiveNotebookType();
+                    if (type !== 'sketch') {
+                        toggleSketchMode(false);
+                    }
                 } else {
                     document.activeElement?.blur();
                 }
@@ -1418,12 +1658,12 @@ window.close();
 
             if (e.ctrlKey || e.metaKey) {
                 if (e.key === 'z' || e.key === 'Z') {
-                    if (document.activeElement && document.activeElement.tagName === 'TEXTAREA') return;
+                    if (document.activeElement && (document.activeElement.tagName === 'TEXTAREA' || document.activeElement.id === 'word-processor')) return;
                     e.preventDefault();
                     undoStroke();
                 }
                 if (e.key === 'y' || e.key === 'Y') {
-                    if (document.activeElement && document.activeElement.tagName === 'TEXTAREA') return;
+                    if (document.activeElement && (document.activeElement.tagName === 'TEXTAREA' || document.activeElement.id === 'word-processor')) return;
                     e.preventDefault();
                     redoStroke();
                 }
