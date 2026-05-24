@@ -324,24 +324,34 @@
     <!-- Right-Click Context Menu -->
     <div
       id="custom-context-menu"
-      class="hidden fixed z-[100] w-64 bg-white/95 dark:bg-[#121212]/95 backdrop-blur-md rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 shadow-2xl py-2 text-xs font-medium text-neutral-700 dark:text-neutral-200 select-none animate-in fade-in zoom-in-95 duration-100"
+      class="hidden fixed z-[100] w-72 bg-white/95 dark:bg-[#121212]/95 backdrop-blur-md rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 shadow-2xl py-2 text-xs font-medium text-neutral-700 dark:text-neutral-200 select-none animate-in fade-in zoom-in-95 duration-100"
     >
       <div
         class="px-4 py-3 border-b border-neutral-200/50 dark:border-neutral-800/50 mb-1 flex items-center gap-3 bg-neutral-50 dark:bg-neutral-900/50"
       >
         <div
-          class="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold"
+          class="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold flex-shrink-0"
           id="user-avatar"
         >
           ?
         </div>
-        <div class="flex flex-col">
-          <span
-            id="user-display-name"
-            class="font-bold text-neutral-800 dark:text-neutral-200"
-            >Connecting...</span
-          >
-          <span class="text-[10px] text-neutral-500">Collaborative Mode</span>
+        <div class="flex flex-col min-w-0 flex-1">
+          <div class="flex items-center gap-2 group/name cursor-pointer" onclick="enableNameEditing(event)">
+            <span
+              id="user-display-name"
+              class="font-bold text-neutral-800 dark:text-neutral-200 truncate"
+              >Connecting...</span
+            >
+            <i data-lucide="edit-2" class="w-3 h-3 text-neutral-400 hover:text-indigo-500 transition-colors"></i>
+          </div>
+          <input
+            id="user-display-name-input"
+            type="text"
+            class="hidden font-bold text-neutral-800 dark:text-neutral-100 bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded outline-none border border-neutral-300 dark:border-neutral-700 w-full text-xs"
+            onblur="saveNewName()"
+            onkeydown="handleNameKeydown(event)"
+          />
+          <span class="text-[9px] text-neutral-500 font-mono tracking-tight break-all" id="user-full-id">Collaborative Mode</span>
         </div>
       </div>
 
@@ -352,7 +362,7 @@
         <button
           id="auth-btn"
           onclick="toggleAuth()"
-          class="w-full text-left flex items-center gap-3 text-indigo-500 hover:text-indigo-600 transition-colors font-semibold"
+          class="w-full text-left flex items-center gap-3 text-indigo-500 hover:text-indigo-600 transition-colors font-semibold font-sans"
         >
           <svg
             class="w-4 h-4 shadow-sm rounded-full"
@@ -383,38 +393,39 @@
 
       <button
         onclick="openNotebookModal()"
-        class="w-full text-left px-4 py-2.5 hover:bg-neutral-100 dark:hover:bg-neutral-800/60 flex items-center gap-3 transition-colors"
+        class="w-full text-left px-4 py-2.5 hover:bg-neutral-100 dark:hover:bg-neutral-800/60 flex items-center gap-3 transition-colors font-sans"
       >
-        <i data-lucide="book" class="w-4 h-4 text-amber-500"></i
+        <i data-lucide="book" class="w-4 h-4 text-amber-500 font-sans"></i
         ><span>Notebooks...</span>
       </button>
       <button
         id="share-menu-btn"
         onclick="openShareModal()"
-        class="w-full text-left px-4 py-2.5 hover:bg-neutral-100 dark:hover:bg-neutral-800/60 flex items-center gap-3 transition-colors"
+        class="w-full text-left px-4 py-2.5 hover:bg-neutral-100 dark:hover:bg-neutral-800/60 flex items-center gap-3 transition-colors font-sans"
       >
-        <i data-lucide="users" class="w-4 h-4 text-emerald-500"></i
+        <i data-lucide="users" class="w-4 h-4 text-emerald-500 font-sans"></i
         ><span>Share & Collaborate</span>
       </button>
       <button
         onclick="exportCanvas()"
-        class="w-full text-left px-4 py-2.5 hover:bg-neutral-100 dark:hover:bg-neutral-800/60 flex items-center gap-3 transition-colors"
+        class="w-full text-left px-4 py-2.5 hover:bg-neutral-100 dark:hover:bg-neutral-800/60 flex items-center gap-3 transition-colors font-sans"
       >
-        <i data-lucide="image" class="w-4 h-4 text-indigo-500"></i
+        <i data-lucide="image" class="w-4 h-4 text-indigo-500 font-sans"></i
         ><span>Save Canvas Image</span>
       </button>
       <button
         onclick="clearCanvas()"
-        class="w-full text-left px-4 py-2.5 hover:bg-rose-50 dark:hover:bg-rose-950/20 text-rose-500 flex items-center gap-3 transition-colors"
+        class="w-full text-left px-4 py-2.5 hover:bg-rose-50 dark:hover:bg-rose-950/20 text-rose-500 flex items-center gap-3 transition-colors font-sans"
       >
-        <i data-lucide="trash-2" class="w-4 h-4"></i><span>Delete All</span>
+        <i data-lucide="trash-2" class="w-4 h-4 font-sans"></i
+        ><span>Delete All</span>
       </button>
       <hr class="border-neutral-200/50 dark:border-neutral-800/50 my-1.5" />
       <button
         onclick="exitTab()"
-        class="w-full text-left px-4 py-2.5 hover:bg-neutral-100 dark:hover:bg-neutral-800/60 flex items-center gap-3 transition-colors"
+        class="w-full text-left px-4 py-2.5 hover:bg-neutral-100 dark:hover:bg-neutral-800/60 flex items-center gap-3 transition-colors font-sans"
       >
-        <i data-lucide="x-circle" class="w-4 h-4 text-neutral-400"></i
+        <i data-lucide="x-circle" class="w-4 h-4 text-neutral-400 font-sans"></i
         ><span>Close Menu</span>
       </button>
     </div>
@@ -422,7 +433,7 @@
     <!-- Notebook Selection Modal -->
     <div
       id="notebook-modal"
-      class="hidden fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center transition-opacity"
+      class="hidden fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center transition-opacity animate-in fade-in duration-200"
     >
       <div
         class="bg-white dark:bg-[#121212] w-full max-w-md rounded-2xl p-6 shadow-2xl border border-neutral-200/60 dark:border-neutral-800/60 relative"
@@ -430,7 +441,7 @@
         <h2 class="text-xl font-serif mb-4 dark:text-neutral-200">
           Your Notebooks
         </h2>
-        <p class="text-xs text-neutral-500 mb-3">
+        <p class="text-xs text-neutral-500 mb-3 font-sans">
           Notebooks stored in the cloud. Shared notebooks will appear here.
         </p>
 
@@ -438,7 +449,7 @@
           id="notebook-list"
           class="flex flex-col gap-2 max-h-[260px] overflow-y-auto mb-4 no-scrollbar pr-2"
         >
-          <div class="text-xs text-neutral-400 p-2 text-center">
+          <div class="text-xs text-neutral-400 p-2 text-center font-sans">
             Loading notebooks...
           </div>
         </div>
@@ -450,7 +461,7 @@
             type="text"
             id="new-notebook-name"
             placeholder="New Notebook Name..."
-            class="w-full px-3 py-2.5 rounded-lg bg-neutral-100 dark:bg-[#1c1c1c] dark:text-white border-none outline-none text-sm placeholder-neutral-400"
+            class="w-full px-3 py-2.5 rounded-lg bg-neutral-100 dark:bg-[#1c1c1c] dark:text-white border-none outline-none text-sm placeholder-neutral-400 font-sans"
           />
           <div class="flex flex-col gap-1">
             <label
@@ -459,7 +470,7 @@
             >
             <select
               id="new-notebook-type"
-              class="w-full px-3 py-2 bg-neutral-100 dark:bg-[#1c1c1c] dark:text-white text-xs border-none rounded-lg outline-none cursor-pointer py-2.5"
+              class="w-full px-3 py-2 bg-neutral-100 dark:bg-[#1c1c1c] dark:text-white text-xs border-none rounded-lg outline-none cursor-pointer py-2.5 font-sans"
             >
               <option value="adaptive">
                 Adaptive Space (Text & Auto-boxing Drawing)
@@ -474,7 +485,7 @@
           </div>
           <button
             onclick="createNewNotebook()"
-            class="w-full py-2.5 bg-indigo-500 text-white rounded-lg text-sm font-medium hover:bg-indigo-600 transition-colors shadow-sm"
+            class="w-full py-2.5 bg-indigo-500 text-white rounded-lg text-sm font-medium hover:bg-indigo-600 transition-colors shadow-sm font-sans font-bold"
           >
             Create Cloud Notebook
           </button>
@@ -492,7 +503,7 @@
     <!-- Collaboration/Share Modal -->
     <div
       id="share-modal"
-      class="hidden fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center transition-opacity"
+      class="hidden fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center transition-opacity animate-in fade-in duration-200"
     >
       <div
         class="bg-white dark:bg-[#121212] w-full max-w-md rounded-2xl p-6 shadow-2xl border border-neutral-200/60 dark:border-neutral-800/60 relative"
@@ -503,7 +514,7 @@
           <i data-lucide="users" class="w-5 h-5 text-emerald-500"></i>
           Collaborate
         </h2>
-        <p class="text-xs text-neutral-500 mb-4">
+        <p class="text-xs text-neutral-500 mb-4 font-sans">
           Search for anyone using this app to share this specific notebook.
         </p>
 
@@ -541,7 +552,9 @@
             id="shared-users-list"
             class="flex flex-col gap-2 max-h-[150px] overflow-y-auto no-scrollbar"
           >
-            <p class="text-xs text-neutral-500">Loading collaborators...</p>
+            <p class="text-xs text-neutral-500 font-sans">
+              Loading collaborators...
+            </p>
           </div>
         </div>
 
@@ -569,6 +582,7 @@
         signInWithRedirect,
         getRedirectResult,
         signOut,
+        signInWithCustomToken,
         signInAnonymously,
         onAuthStateChanged,
         GoogleAuthProvider,
@@ -581,16 +595,15 @@
         onSnapshot,
         updateDoc,
         getDocs,
+        getDoc,
       } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
       lucide.createIcons();
 
       // ==========================================
-      // 1. PRODUCTION FIREBASE CONFIGURATION
-      // Replace the placeholder values below with your actual Firebase web config.
-      // Get this from: Firebase Console -> Project Settings -> General -> Your Apps.
+      // ENVIRONMENT / FALLBACK CONFIGURATION
       // ==========================================
-      const firebaseConfig = {
+      const myFirebaseConfig = {
         apiKey: "AIzaSyBXFX0ajlPdx1aFQgfN7wUPROmu7UvrOMw",
         authDomain: "tumer-ecadf.firebaseapp.com",
         projectId: "tumer-ecadf",
@@ -599,15 +612,39 @@
         appId: "1:909597748432:web:e8d56f65af0afd8863c2d5",
       };
 
-      // Unique identifier to prevent partition overlaps on shared database servers
-      const appId = "slate-collaborative-production-app";
+      // Safely fetch app details from environment parameters
+      const parsedAppId = typeof __app_id !== "undefined" ? __app_id : "default-app-id";
+      const appId = parsedAppId;
 
-      let app, auth, db;
+      let firebaseConfig = null;
+      if (typeof __firebase_config !== "undefined" && __firebase_config) {
+        try {
+          firebaseConfig = JSON.parse(__firebase_config);
+        } catch (e) {
+          console.error("Error parsing environment __firebase_config", e);
+        }
+      }
+
+      if (!firebaseConfig && myFirebaseConfig.apiKey && myFirebaseConfig.apiKey !== "YOUR_API_KEY_HERE") {
+        firebaseConfig = myFirebaseConfig;
+      }
+
+      // Track configuration status safely across modules
+      const isConfigValid = firebaseConfig !== null;
+
+      let app = null, auth = null, db = null;
       let currentUser = null;
       let isSyncingFromCloud = false;
+      let authInitialized = false; // Tracks if we have already kicked off an authentication attempt
+      let isAuthReady = false; // Tracks if we are fully authed and ready for Firestore queries
       let unsubscribeActiveNotebook = null;
-      let activeNotebookId =
-        localStorage.getItem("canvas_active_notebook_id") || "default-nb";
+      let unsubscribeAllNotebooks = null;
+      let activeNotebookId = localStorage.getItem("canvas_active_notebook_id") || "default-nb";
+
+      // Standalone fallback database
+      let notebooks = JSON.parse(localStorage.getItem("canvas_notebooks")) || [
+        { id: "default-nb", name: "Main Sketchbook", type: "adaptive" },
+      ];
 
       // State definition
       const state = (window.slateState = {
@@ -622,6 +659,7 @@
         currentPath: null,
         documentText: "",
         brushTool: "pen",
+        userName: "Guest", // Tracks the updated display name globally
         usePressure: true,
         useStabilizer: true,
         activeStylus: false,
@@ -630,18 +668,23 @@
         notebooksList: [],
       });
 
-      // Check if configuration is set
-      const isConfigValid =
-        firebaseConfig.apiKey &&
-        firebaseConfig.apiKey !== "YOUR_FIREBASE_API_KEY";
+      // ==========================================
+      // FIREBASE & AUTH INITIALIZATION PROTOCOL
+      // ==========================================
+      const initFirebaseAndAuth = async () => {
+        if (!firebaseConfig) {
+          console.warn("No Firebase configuration available. Running in offline fallback mode.");
+          updateCloudStatus("Offline Mode");
+          loadStandaloneState();
+          return;
+        }
 
-      if (isConfigValid) {
         try {
           app = initializeApp(firebaseConfig);
           auth = getAuth(app);
           db = getFirestore(app);
 
-          // Handle redirect result if signed in via redirect on load
+          // Handle redirect credentials if applicable
           getRedirectResult(auth)
             .then((result) => {
               if (result && result.user) {
@@ -649,91 +692,157 @@
               }
             })
             .catch((err) => {
-              console.error("Redirect auth check failed", err);
+              console.error("Redirect auth lookup error", err);
             });
 
-          // Rule 3: Auth first before any Firestore operations
-          const initAuth = async () => {
-            try {
-              await signInAnonymously(auth);
-            } catch (err) {
-              console.error("Auth failed", err);
-              showToast("Authentication fallback running.");
-            }
-          };
-          initAuth();
-
+          // Rule 3 & Checkers Pattern: Listen to auth state immediately.
+          // Trigger sign-in flow cleanly on first empty auth check.
           onAuthStateChanged(auth, async (user) => {
+            if (!user && !authInitialized) {
+              authInitialized = true;
+              try {
+                if (typeof __initial_auth_token !== "undefined" && __initial_auth_token) {
+                  await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                  await signInAnonymously(auth);
+                }
+              } catch (authErr) {
+                console.error("Authentication flow failed", authErr);
+                showToast("Authentication failed. Running in offline mode.");
+                updateCloudStatus("Offline Mode (Auth Error)");
+                loadStandaloneState();
+              }
+              return;
+            }
+
+            authInitialized = true;
             currentUser = user;
+
             if (user) {
+              isAuthReady = true;
               const isAnon = user.isAnonymous;
               updateCloudStatus(isAnon ? "Connected (Guest)" : "Connected");
 
-              // Display details
-              const displayName = isAnon
+              let displayName = isAnon
                 ? "Guest"
                 : user.displayName || `User ${user.uid.substring(0, 4)}`;
-              document.getElementById("user-display-name").innerText =
-                displayName;
-              document.getElementById("user-avatar").innerText = displayName
-                .charAt(0)
-                .toUpperCase();
+
+              // Read name from database standard user directories so custom settings aren't lost (Rule 1 paths)
+              const userRef = doc(db, "artifacts", appId, "public", "data", "users", user.uid);
+              try {
+                const userSnap = await getDoc(userRef);
+                if (userSnap.exists()) {
+                  const userData = userSnap.data();
+                  if (userData.name) {
+                    displayName = userData.name;
+                  }
+                } else {
+                  // Register new directory profile
+                  await setDoc(
+                    userRef,
+                    {
+                      uid: user.uid,
+                      name: displayName,
+                      email: isAnon ? "Anonymous Guest" : user.email || "Google Account",
+                      lastActive: Date.now(),
+                    },
+                    { merge: true }
+                  );
+                }
+              } catch (e) {
+                console.error("Failed to fetch/register profile from directory", e);
+              }
+
+              state.userName = displayName || "Guest"; // Track name dynamically inside Canvas memory
+
+              document.getElementById("user-display-name").innerText = state.userName;
+              document.getElementById("user-full-id").innerText = `ID: ${user.uid}`;
+              document.getElementById("user-avatar").innerText = state.userName.charAt(0).toUpperCase();
 
               const authText = document.getElementById("auth-text");
               if (authText) {
-                authText.innerText = isAnon
-                  ? "Sign in with Google"
-                  : "Sign Out";
+                authText.innerText = isAnon ? "Sign in with Google" : "Sign Out";
               }
 
-              // Register user directory profile (Rule 1: Strict paths)
-              const userRef = doc(
-                db,
-                "artifacts",
-                appId,
-                "public",
-                "data",
-                "users",
-                user.uid
-              );
-              await setDoc(
-                userRef,
-                {
-                  uid: user.uid,
-                  name: displayName,
-                  email: isAnon
-                    ? "Anonymous Guest"
-                    : user.email || "Google Account",
-                  lastActive: Date.now(),
-                },
-                { merge: true }
-              );
-
+              // Initialize real-time synchronization listeners
               listenToAllNotebooks();
             } else {
-              try {
-                await signInAnonymously(auth);
-              } catch (e) {
-                console.error("No credentials available.", e);
-              }
+              isAuthReady = false;
+              updateCloudStatus("Offline Mode");
+              loadStandaloneState();
             }
           });
-        } catch (err) {
-          console.error("Initialization error", err);
-          showToast("Firebase Config error. Check script parameters.");
-        }
-      } else {
-        console.warn(
-          "Firebase config block contains placeholder values. Running in offline/local storage mode."
-        );
-        setTimeout(() => {
-          showToast(
-            "Please open the file and replace 'YOUR_FIREBASE_API_KEY' with your credentials!"
-          );
-        }, 1500);
-      }
 
-      // --- AUTH TOGGLE FOR MANUAL GOOGLE AUTH ---
+        } catch (err) {
+          console.error("Could not bootstrap Firebase instance context.", err);
+          updateCloudStatus("Offline Mode (Error)");
+          loadStandaloneState();
+        }
+      };
+
+      // --- EDIT/SAVE USER DISPLAY NAME ---
+      window.enableNameEditing = (event) => {
+        if (event) event.stopPropagation();
+        const displayLabel = document.getElementById("user-display-name").parentElement;
+        const inputField = document.getElementById("user-display-name-input");
+        
+        displayLabel.classList.add("hidden");
+        inputField.classList.remove("hidden");
+        inputField.value = document.getElementById("user-display-name").innerText;
+        inputField.focus();
+        inputField.select();
+      };
+
+      window.saveNewName = async () => {
+        const displayLabel = document.getElementById("user-display-name").parentElement;
+        const inputField = document.getElementById("user-display-name-input");
+        const newName = inputField.value.trim();
+
+        if (newName && newName !== document.getElementById("user-display-name").innerText) {
+          const oldName = state.userName;
+          document.getElementById("user-display-name").innerText = newName;
+          document.getElementById("user-avatar").innerText = newName.charAt(0).toUpperCase();
+          state.userName = newName;
+
+          if (db && isAuthReady && currentUser) {
+            // Write standard user directory update back to Firestore (Rule 1 paths)
+            const userRef = doc(db, "artifacts", appId, "public", "data", "users", currentUser.uid);
+            try {
+              await setDoc(userRef, { name: newName, lastActive: Date.now() }, { merge: true });
+              showToast("Name saved to cloud profile!");
+            } catch (err) {
+              console.error("Could not update name in database", err);
+              showToast("Name saved locally.");
+            }
+          } else {
+            showToast("Name saved locally.");
+          }
+
+          // Dynamically change author on any note blocks contributed by you in active session
+          state.blocks.forEach(block => {
+            if (block.authorName === oldName || block.authorName === "Guest" || !block.authorName) {
+              block.authorName = newName;
+            }
+          });
+          renderAllBlocks();
+        }
+
+        inputField.classList.add("hidden");
+        displayLabel.classList.remove("hidden");
+      };
+
+      window.handleNameKeydown = (event) => {
+        if (event.key === "Enter") {
+          saveNewName();
+        } else if (event.key === "Escape") {
+          const displayLabel = document.getElementById("user-display-name").parentElement;
+          const inputField = document.getElementById("user-display-name-input");
+          inputField.classList.add("hidden");
+          displayLabel.classList.remove("hidden");
+        }
+      };
+
+      // --- AUTH TOGGLE FOR GOOGLE AUTH ---
       window.toggleAuth = () => {
         document.getElementById("custom-context-menu").classList.add("hidden");
         if (!auth) {
@@ -742,6 +851,8 @@
         }
 
         if (currentUser && !currentUser.isAnonymous) {
+          isAuthReady = false;
+          authInitialized = false;
           signOut(auth)
             .then(() => {
               showToast("Signed out. Switched back to Guest.");
@@ -758,72 +869,67 @@
               showToast(`Signed in as ${result.user.displayName}`);
             })
             .catch((err) => {
-              console.warn(
-                "Popup blocked or not supported. Trying redirect...",
-                err
-              );
+              console.warn("Popup blocked or not supported. Using redirection logic instead...", err);
               if (
                 err.code === "auth/popup-blocked" ||
                 err.code === "auth/operation-not-supported-in-this-environment"
               ) {
-                signInWithRedirect(auth, provider).catch((rErr) => {
-                  showToast("Sign in failed: " + rErr.message);
+                signInWithRedirect(auth, provider).catch((redirectErr) => {
+                  showToast("Sign in redirection failure: " + redirectErr.message);
                 });
               } else {
-                showToast("Authentication failed: " + err.message);
+                showToast("Authentication cancelled or interrupted: " + err.message);
               }
             });
         }
       };
 
-      // --- CLOUD SYNCING LOGIC ---
+      // --- CLOUD SYNCING REAL-TIME SNAPSHOTS ---
 
       function listenToAllNotebooks() {
-        if (!currentUser || !db) return; // Guard Firestore operations
-        const nbColRef = collection(
-          db,
-          "artifacts",
-          appId,
-          "public",
-          "data",
-          "notebooks"
-        );
+        if (!currentUser || !db || !isAuthReady) return;
 
-        // Listen to public notebooks using simple, clean collection snapshots (Rule 2)
-        onSnapshot(
+        // Cleanup any older listener instance
+        if (unsubscribeAllNotebooks) {
+          unsubscribeAllNotebooks();
+        }
+
+        // Rule 1 & Rule 2: Strict path format & simple collection fetch
+        const nbColRef = collection(db, "artifacts", appId, "public", "data", "notebooks");
+
+        unsubscribeAllNotebooks = onSnapshot(
           nbColRef,
           (snapshot) => {
             const available = [];
             snapshot.forEach((docSnap) => {
               const data = docSnap.data();
-              if (
-                data.owner === currentUser.uid ||
-                (data.collaborators &&
-                  data.collaborators.includes(currentUser.uid))
-              ) {
+              const isOwner = data.owner === currentUser.uid;
+              const isCollab = data.collaborators && data.collaborators.includes(currentUser.uid);
+              // Filter notebooks in-memory on the client (Rule 2 requirement)
+              if (isOwner || isCollab) {
                 available.push({ id: docSnap.id, ...data });
               }
             });
 
+            state.notebooksList = available;
+
             if (available.length === 0) {
-              window.createNewNotebook(
-                "Main Sketchbook",
-                "adaptive",
-                "default-nb"
-              );
+              window.createNewNotebook("Main Sketchbook", "adaptive", "default-nb");
             } else {
-              state.notebooksList = available;
-              if (!available.find((n) => n.id === activeNotebookId)) {
+              // Validate if active notebook exists in refreshed list
+              const existingNb = available.find((n) => n.id === activeNotebookId);
+              if (!existingNb) {
                 switchNotebook(available[0].id);
               } else {
-                if (!unsubscribeActiveNotebook)
+                if (!unsubscribeActiveNotebook) {
                   switchNotebook(activeNotebookId);
+                }
               }
               renderNotebookListUI();
             }
           },
           (err) => {
-            console.error("Notebook list syncing issue", err);
+            console.error("Could not fetch authorized notebooks list stream.", err);
           }
         );
       }
@@ -841,17 +947,10 @@
         state.documentText = "";
         document.getElementById("cards-container").innerHTML = "";
 
-        if (db) {
+        if (db && isAuthReady && currentUser) {
           // Rule 1 Compliance: Strict path format
-          const nbDocRef = doc(
-            db,
-            "artifacts",
-            appId,
-            "public",
-            "data",
-            "notebooks",
-            id
-          );
+          const nbDocRef = doc(db, "artifacts", appId, "public", "data", "notebooks", id);
+
           unsubscribeActiveNotebook = onSnapshot(
             nbDocRef,
             (docSnap) => {
@@ -866,10 +965,7 @@
 
                 if (getActiveNotebookType() === "document") {
                   const wp = document.getElementById("word-processor");
-                  if (
-                    wp.value !== state.documentText &&
-                    document.activeElement !== wp
-                  ) {
+                  if (wp && wp.value !== state.documentText && document.activeElement !== wp) {
                     wp.value = state.documentText;
                     adjustWordProcessorHeight();
                   }
@@ -877,16 +973,20 @@
                   renderAllBlocks();
                   redrawSketchCanvas();
                 }
+
                 setTimeout(() => {
                   isSyncingFromCloud = false;
-                }, 300);
+                }, 100);
+
                 loadSharedUsersList(data.collaborators || []);
               }
             },
-            (error) => showToast("Connection updated")
+            (error) => {
+              console.error("Error syncing active notebook content", error);
+            }
           );
         } else {
-          loadLocalState();
+          loadStandaloneState();
         }
 
         closeModal("notebook-modal");
@@ -902,24 +1002,14 @@
           ambientOn: state.ambientOn,
           documentText: state.documentText,
         };
-        localStorage.setItem(
-          `canvas_data_${activeNotebookId}`,
-          JSON.stringify(localData)
-        );
+        localStorage.setItem(`canvas_data_${activeNotebookId}`, JSON.stringify(localData));
 
-        if (!currentUser || !db || isSyncingFromCloud) return;
+        if (!currentUser || !db || !isAuthReady || isSyncingFromCloud) return;
 
         isSyncingFromCloud = true;
+
         // Rule 1: Strict path storage
-        const nbDocRef = doc(
-          db,
-          "artifacts",
-          appId,
-          "public",
-          "data",
-          "notebooks",
-          activeNotebookId
-        );
+        const nbDocRef = doc(db, "artifacts", appId, "public", "data", "notebooks", activeNotebookId);
         setDoc(
           nbDocRef,
           {
@@ -930,11 +1020,13 @@
           },
           { merge: true }
         )
-          .catch((err) => console.error("Could not sync updates", err))
+          .catch((err) => {
+            console.error("Could not sync updates to database", err);
+          })
           .finally(() => {
             setTimeout(() => {
               isSyncingFromCloud = false;
-            }, 300);
+            }, 100);
           });
       };
 
@@ -952,29 +1044,29 @@
           typeOverride || document.getElementById("new-notebook-type").value;
         const newId = idOverride || `nb_${Date.now()}`;
 
-        if (db && currentUser) {
-          // Rule 1: Strict collection paths
-          const nbDocRef = doc(
-            db,
-            "artifacts",
-            appId,
-            "public",
-            "data",
-            "notebooks",
-            newId
-          );
-          await setDoc(nbDocRef, {
-            name: name,
-            type: type,
-            owner: currentUser.uid,
-            collaborators: [],
-            blocks: [],
-            drawings: [],
-            documentText: "",
-            createdAt: Date.now(),
-          });
+        if (db && isAuthReady && currentUser) {
+          // Rule 1: Strict path formatting
+          const nbDocRef = doc(db, "artifacts", appId, "public", "data", "notebooks", newId);
+          try {
+            await setDoc(nbDocRef, {
+              name: name,
+              type: type,
+              owner: currentUser.uid,
+              collaborators: [],
+              blocks: [],
+              drawings: [],
+              documentText: "",
+              createdAt: Date.now(),
+            });
+            switchNotebook(newId);
+          } catch (e) {
+            console.error("Failed to create cloud notebook documentation", e);
+            showToast("Failed to create notebook on server.");
+          }
         } else {
-          notebooks.push({ id: newId, name: name, type: type });
+          // Offline fallback storage handling
+          const newLocalNb = { id: newId, name: name, type: type };
+          notebooks.push(newLocalNb);
           localStorage.setItem("canvas_notebooks", JSON.stringify(notebooks));
           switchNotebook(newId);
         }
@@ -983,51 +1075,75 @@
         showToast("Notebook Created!");
       };
 
+      // Helper function to render a single user search item safely
+      function renderSearchResultItem(container, user, uid, isSelf, currentCollabs) {
+        const isShared = currentCollabs.includes(uid);
+        const el = document.createElement("div");
+        el.className =
+          "flex items-center justify-between p-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md border border-neutral-100 dark:border-neutral-800/50";
+        
+        let actionBtnHtml = "";
+        if (isSelf) {
+          actionBtnHtml = `<span class="px-2 py-1 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-500 text-[9px] rounded-md font-sans font-bold uppercase tracking-wider flex-shrink-0">You</span>`;
+        } else {
+          actionBtnHtml = `
+            <button onclick="shareNotebookWith('${uid}')" class="px-3 py-1.5 flex-shrink-0 ${
+              isShared
+                ? "bg-emerald-500/20 text-emerald-600"
+                : "bg-indigo-500 text-white hover:bg-indigo-600"
+            } text-[10px] rounded-md transition-colors font-sans font-bold uppercase tracking-wider" ${
+              isShared ? "disabled" : ""
+            }>
+                ${isShared ? "Added" : "Add"}
+            </button>
+          `;
+        }
+
+        el.innerHTML = `
+          <div class="flex flex-col min-w-0 pr-2">
+              <span class="text-xs font-bold dark:text-white font-sans truncate">${user.name || "Anonymous User"}</span>
+              <span class="text-[9px] text-neutral-500 font-mono truncate">ID: ${uid}</span>
+          </div>
+          ${actionBtnHtml}
+        `;
+        container.appendChild(el);
+      }
+      window.renderSearchResultItem = renderSearchResultItem;
+
       // --- DIRECTORY COLLABORATION SEARCH ---
       window.searchUsers = async () => {
-        if (!db) {
-          showToast(
-            "Search is offline. Enter Firebase Config at top of index.html!"
-          );
+        if (!db || !isAuthReady) {
+          showToast("Search is offline. Cloud capabilities are unavailable.");
           return;
         }
-        const query = document
-          .getElementById("user-search-input")
-          .value.toLowerCase();
+        const queryInput = document.getElementById("user-search-input");
+        const query = queryInput ? queryInput.value.toLowerCase().trim() : "";
         const resultsBox = document.getElementById("user-search-results");
-        resultsBox.innerHTML =
-          '<p class="text-xs text-neutral-500 p-2">Searching directory...</p>';
+
+        resultsBox.innerHTML = '<p class="text-xs text-neutral-500 p-2 font-sans">Searching directory...</p>';
         resultsBox.classList.remove("hidden");
 
-        const usersRef = collection(
-          db,
-          "artifacts",
-          appId,
-          "public",
-          "data",
-          "users"
-        );
+        const usersRef = collection(db, "artifacts", appId, "public", "data", "users");
 
         try {
-          // Rule 2 Compliance: Fetch plain list of users from public directory & filter inside client memory.
+          // Rule 2 Compliance: Fetch plain list of users from directory, then filter inside client memory.
           const snap = await getDocs(usersRef);
           resultsBox.innerHTML = "";
           let found = false;
 
-          const activeNb = state.notebooksList.find(
-            (n) => n.id === activeNotebookId
-          );
+          const activeNb = state.notebooksList.find((n) => n.id === activeNotebookId);
           const currentCollabs = activeNb ? activeNb.collaborators || [] : [];
 
           snap.forEach((docSnap) => {
             const user = docSnap.data();
             const uid = docSnap.id;
-            if (uid === currentUser?.uid) return;
+            const isSelf = uid === currentUser?.uid;
 
             const name = (user.name || "").toLowerCase();
             const email = (user.email || "").toLowerCase();
             const idMatch = uid.toLowerCase();
 
+            // Display matches or list everyone if search is empty
             if (
               !query ||
               name.includes(query) ||
@@ -1035,55 +1151,44 @@
               idMatch.includes(query)
             ) {
               found = true;
-              const isShared = currentCollabs.includes(uid);
-              const el = document.createElement("div");
-              el.className =
-                "flex items-center justify-between p-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md border border-neutral-100 dark:border-neutral-800/50";
-              el.innerHTML = `
-                            <div class="flex flex-col">
-                                <span class="text-xs font-bold dark:text-white font-sans">${
-                                  user.name
-                                }</span>
-                                <span class="text-[9px] text-neutral-500 font-mono font-sans">ID: ${uid.substring(
-                                  0,
-                                  6
-                                )}...</span>
-                            </div>
-                            <button onclick="shareNotebookWith('${uid}')" class="px-3 py-1.5 ${
-                isShared
-                  ? "bg-emerald-500/20 text-emerald-600"
-                  : "bg-indigo-500 text-white hover:bg-indigo-600"
-              } text-[10px] rounded-md transition-colors font-sans font-bold uppercase tracking-wider" ${
-                isShared ? "disabled" : ""
-              }>
-                                ${isShared ? "Added" : "Add"}
-                            </button>
-                        `;
-              resultsBox.appendChild(el);
+              renderSearchResultItem(resultsBox, user, uid, isSelf, currentCollabs);
             }
           });
-          if (!found)
-            resultsBox.innerHTML = `<p class="text-xs text-neutral-500 p-2">No users match your search.</p>`;
+          if (!found) {
+            resultsBox.innerHTML = `<p class="text-xs text-neutral-500 p-2 font-sans">No other users match your search.</p>`;
+          }
         } catch (err) {
-          console.error("User search failed", err);
-          resultsBox.innerHTML = `<p class="text-xs text-rose-500 p-2">Error searching.</p>`;
+          console.warn("Listing users collection directly failed. Using robust individual fetch lookup fallback...", err);
+          // Fallback: If listing directory collection is forbidden, retrieve direct ID document safely
+          if (query.length >= 10) {
+            try {
+              const directDocRef = doc(db, "artifacts", appId, "public", "data", "users", query);
+              const docSnap = await getDoc(directDocRef);
+              resultsBox.innerHTML = "";
+              if (docSnap.exists()) {
+                const user = docSnap.data();
+                const uid = docSnap.id;
+                const isSelf = uid === currentUser?.uid;
+                const activeNb = state.notebooksList.find((n) => n.id === activeNotebookId);
+                const currentCollabs = activeNb ? activeNb.collaborators || [] : [];
+                renderSearchResultItem(resultsBox, user, uid, isSelf, currentCollabs);
+              } else {
+                resultsBox.innerHTML = `<p class="text-xs text-neutral-500 p-2 font-sans">No user found with ID: ${query}</p>`;
+              }
+            } catch (fallbackErr) {
+              console.error("Direct fetch search fallback failed", fallbackErr);
+              resultsBox.innerHTML = `<p class="text-xs text-rose-500 p-2 font-sans font-medium">Error loading profile query.</p>`;
+            }
+          } else {
+            resultsBox.innerHTML = `<p class="text-[10px] text-neutral-500 p-2 font-sans leading-normal">Enter a full User ID to search directly (profile directory listing is restricted).</p>`;
+          }
         }
       };
 
       window.shareNotebookWith = async (targetUid) => {
-        if (!db || !currentUser) return;
-        const nbDocRef = doc(
-          db,
-          "artifacts",
-          appId,
-          "public",
-          "data",
-          "notebooks",
-          activeNotebookId
-        );
-        const activeNb = state.notebooksList.find(
-          (n) => n.id === activeNotebookId
-        );
+        if (!db || !isAuthReady || !currentUser) return;
+        const nbDocRef = doc(db, "artifacts", appId, "public", "data", "notebooks", activeNotebookId);
+        const activeNb = state.notebooksList.find((n) => n.id === activeNotebookId);
 
         if (activeNb && activeNb.owner !== currentUser.uid) {
           showToast("Only the owner can add collaborators.");
@@ -1093,54 +1198,78 @@
         const currentCollabs = activeNb ? activeNb.collaborators || [] : [];
         if (!currentCollabs.includes(targetUid)) {
           currentCollabs.push(targetUid);
-          await updateDoc(nbDocRef, { collaborators: currentCollabs });
-          showToast("User added successfully!");
-          searchUsers();
+          try {
+            await updateDoc(nbDocRef, { collaborators: currentCollabs });
+            showToast("User added successfully!");
+            searchUsers();
+          } catch (e) {
+            console.error("Failed to share notebook document with target user", e);
+            showToast("Failed to share notebook.");
+          }
         }
       };
 
       function loadSharedUsersList(collaboratorUids) {
         const list = document.getElementById("shared-users-list");
-        if (!db) {
-          list.innerHTML = `<p class="text-[10px] text-neutral-500 italic p-2 rounded-lg text-center">Local standalone mode active.</p>`;
+        if (!db || !isAuthReady) {
+          list.innerHTML = `<p class="text-[10px] text-neutral-500 italic p-2 rounded-lg text-center font-sans">Local standalone mode active.</p>`;
           return;
         }
-        if (collaboratorUids.length === 0) {
-          list.innerHTML = `<p class="text-[10px] text-neutral-500 italic p-2 border border-dashed border-neutral-300 dark:border-neutral-800 rounded-lg text-center">Only you have access to this notebook.</p>`;
+        if (!collaboratorUids || collaboratorUids.length === 0) {
+          list.innerHTML = `<p class="text-[10px] text-neutral-500 italic p-2 border border-dashed border-neutral-300 dark:border-neutral-800 rounded-lg text-center font-sans">Only you have access to this notebook.</p>`;
           return;
         }
 
-        const usersRef = collection(
-          db,
-          "artifacts",
-          appId,
-          "public",
-          "data",
-          "users"
-        );
-        onSnapshot(
-          usersRef,
-          (snap) => {
-            list.innerHTML = "";
-            snap.forEach((docSnap) => {
-              if (collaboratorUids.includes(docSnap.id)) {
-                const user = docSnap.data();
-                const el = document.createElement("div");
-                el.className =
-                  "text-xs px-3 py-2 bg-neutral-100 dark:bg-neutral-800/60 rounded-md dark:text-neutral-300 flex items-center justify-between";
-                el.innerHTML = `
-                            <div class="flex items-center gap-2"><i data-lucide="user" class="w-3 h-3 text-emerald-500"></i> <span class="font-bold">${user.name}</span></div>
-                            <span class="text-[9px] uppercase tracking-widest opacity-50 font-semibold">Editor</span>
-                        `;
-                list.appendChild(el);
+        list.innerHTML = '<p class="text-[10px] text-neutral-400 p-2 text-center font-sans">Loading editors...</p>';
+        
+        // Robust fetch: read individual documents directly in parallel instead of reading whole directory collection snapshot
+        let renderedCount = 0;
+        const profileElements = [];
+
+        collaboratorUids.forEach(async (uid) => {
+          try {
+            const uDocRef = doc(db, "artifacts", appId, "public", "data", "users", uid);
+            const uSnap = await getDoc(uDocRef);
+            renderedCount++;
+
+            if (uSnap.exists()) {
+              const user = uSnap.data();
+              profileElements.push({
+                name: user.name || "Anonymous User",
+                uid: uid
+              });
+            }
+
+            // Once all requests resolve, render cleanly
+            if (renderedCount === collaboratorUids.length) {
+              list.innerHTML = "";
+              if (profileElements.length === 0) {
+                list.innerHTML = `<p class="text-[10px] text-neutral-500 italic p-2 border border-dashed border-neutral-300 dark:border-neutral-800 rounded-lg text-center font-sans">No active collaborators found.</p>`;
+              } else {
+                profileElements.forEach((profile) => {
+                  const el = document.createElement("div");
+                  el.className =
+                    "text-xs px-3 py-2 bg-neutral-100 dark:bg-neutral-800/60 rounded-md dark:text-neutral-300 flex items-center justify-between font-sans animate-in fade-in duration-200";
+                  el.innerHTML = `
+                    <div class="flex items-center gap-2 font-sans truncate min-w-0">
+                      <i data-lucide="user" class="w-3 h-3 text-emerald-500 flex-shrink-0"></i> 
+                      <span class="font-bold truncate" title="${profile.name}">${profile.name}</span>
+                    </div>
+                    <span class="text-[9px] uppercase tracking-widest opacity-50 font-semibold font-sans flex-shrink-0 ml-2">Editor</span>
+                  `;
+                  list.appendChild(el);
+                });
               }
-            });
-            lucide.createIcons();
-          },
-          (err) => {
-            console.error("Could not load users directory lists", err);
+              lucide.createIcons();
+            }
+          } catch (err) {
+            console.error("Collaborator profile doc load restriction on profile " + uid, err);
+            renderedCount++;
+            if (renderedCount === collaboratorUids.length && list.innerHTML.includes("Loading")) {
+              list.innerHTML = `<p class="text-[10px] text-neutral-500 italic p-2 border border-dashed border-neutral-300 dark:border-neutral-800 rounded-lg text-center font-sans">Only you have access to this notebook.</p>`;
+            }
           }
-        );
+        });
       }
 
       // --- DOM / LAYOUT UTILS ---
@@ -1149,9 +1278,7 @@
           const active = notebooks.find((nb) => nb.id === activeNotebookId);
           return active ? active.type || "adaptive" : "adaptive";
         }
-        const active = state.notebooksList.find(
-          (nb) => nb.id === activeNotebookId
-        );
+        const active = state.notebooksList.find((nb) => nb.id === activeNotebookId);
         return active ? active.type || "adaptive" : "adaptive";
       }
 
@@ -1181,8 +1308,7 @@
           }`;
 
           const header = document.createElement("div");
-          header.className =
-            "flex items-center justify-between pointer-events-none";
+          header.className = "flex items-center justify-between pointer-events-none";
 
           const title = document.createElement("span");
           title.className = `font-bold text-sm ${
@@ -1193,8 +1319,7 @@
           title.innerText = nb.name;
 
           const badge = document.createElement("span");
-          badge.className =
-            "text-[9px] px-1.5 py-0.5 rounded uppercase font-bold tracking-wider";
+          badge.className = "text-[9px] px-1.5 py-0.5 rounded uppercase font-bold tracking-wider flex-shrink-0 ml-2";
           const type = nb.type || "adaptive";
           if (type === "document") {
             badge.innerText = "Page Doc";
@@ -1213,9 +1338,8 @@
 
           if (nb.owner && nb.owner !== currentUser?.uid) {
             const sharedBadge = document.createElement("div");
-            sharedBadge.className =
-              "text-[9px] text-emerald-500 font-medium flex items-center gap-1 mt-1";
-            sharedBadge.innerHTML = `<i data-lucide="users" class="w-3 h-3"></i> Shared notebook`;
+            sharedBadge.className = "text-[9px] text-emerald-500 font-medium flex items-center gap-1 mt-1 font-sans";
+            sharedBadge.innerHTML = `<i data-lucide="users" class="w-3.5 h-3.5"></i> Shared notebook`;
             item.appendChild(sharedBadge);
           }
 
@@ -1462,6 +1586,27 @@
       window.exportCanvas = () => {
         document.getElementById("custom-context-menu").classList.add("hidden");
         showToast("Image export initiated...");
+        // Fallback or implementation for canvas image creation
+        const exportCanvas = document.createElement("canvas");
+        const workspace = document.getElementById("workspace");
+        exportCanvas.width = workspace.clientWidth;
+        exportCanvas.height = 1200; // Target reasonable export zone
+        const exCtx = exportCanvas.getContext("2d");
+        exCtx.fillStyle = document.body.classList.contains("dark") || true ? "#1c1c1c" : "#ffffff";
+        exCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+        state.drawings.forEach((p) => drawSinglePath(exCtx, p));
+
+        try {
+          const url = exportCanvas.toDataURL("image/png");
+          const a = document.createElement("a");
+          a.download = `${activeNotebookId}-slate-export.png`;
+          a.href = url;
+          a.click();
+          showToast("Saved to downloads.");
+        } catch (e) {
+          console.error("Canvas export blocked", e);
+          showToast("Could not generate export: cross-origin constraints.");
+        }
       };
 
       // Drawing / Rendering Core Block
@@ -1482,7 +1627,7 @@
       }
 
       function drawSinglePath(ctx, path) {
-        if (path.points.length < 1) return;
+        if (!path || !path.points || path.points.length < 1) return;
         ctx.save();
         ctx.globalCompositeOperation =
           path.tool === "highlighter"
@@ -1603,11 +1748,7 @@
                 ? 32
                 : 5,
             points: [targetPoint],
-            authorName: currentUser
-              ? currentUser.isAnonymous
-                ? "Guest"
-                : currentUser.displayName
-              : "Guest",
+            authorName: state.userName || "Guest",
           };
           redrawSketchCanvas();
         },
@@ -1733,11 +1874,7 @@
           width: `${Math.max(240, cardW)}px`,
           height: `${cardH}px`,
           drawings: localSketches,
-          authorName: currentUser
-            ? currentUser.isAnonymous
-              ? "Guest"
-              : currentUser.displayName
-            : "Guest",
+          authorName: state.userName || "Guest",
         };
         state.blocks.push(newBlock);
         createDOMCard(newBlock);
@@ -1794,11 +1931,7 @@
           this.style.height = "auto";
           this.style.height = this.scrollHeight + "px";
           block.text = this.value;
-          block.authorName = currentUser
-            ? currentUser.isAnonymous
-              ? "Guest"
-              : currentUser.displayName
-            : "Guest";
+          block.authorName = state.userName || "Guest";
           const attrTag = div.querySelector(".author-tag");
           if (attrTag) attrTag.innerText = block.authorName;
           saveStateToCloud();
@@ -1829,7 +1962,6 @@
           if (state.layoutMode !== 0) {
             state.layoutMode = 0;
             applyLayoutRules();
-            updateHUD("Restored Freeform");
           }
           startX = ev.clientX;
           startY = ev.clientY;
@@ -1894,11 +2026,7 @@
           createdAt: Date.now(),
           width: "280px",
           height: "auto",
-          authorName: currentUser
-            ? currentUser.isAnonymous
-              ? "Guest"
-              : currentUser.displayName
-            : "Guest",
+          authorName: state.userName || "Guest",
         };
         state.blocks.push(newBlock);
         createDOMCard(newBlock);
@@ -2031,8 +2159,8 @@
         e.preventDefault();
         const menu = document.getElementById("custom-context-menu");
         menu.style.left = `${
-          e.clientX + 256 > window.innerWidth
-            ? window.innerWidth - 266
+          e.clientX + 288 > window.innerWidth
+            ? window.innerWidth - 298
             : e.clientX
         }px`;
         menu.style.top = `${
@@ -2067,13 +2195,8 @@
         }, 3000);
       }
 
-      // Global Local Database storage variables for Standalone fallbacks
-      let notebooks = JSON.parse(localStorage.getItem("canvas_notebooks")) || [
-        { id: "default-nb", name: "Main Sketchbook", type: "adaptive" },
-      ];
-
-      // Global Local Fallback logic
-      window.loadLocalState = () => {
+      // Standalone load logic
+      window.loadStandaloneState = () => {
         const dataStr = localStorage.getItem(`canvas_data_${activeNotebookId}`);
         state.blocks = [];
         state.drawings = [];
@@ -2107,7 +2230,7 @@
           sketchCanvas.height = 5000;
           workspace.scrollTop = 0;
         }
-        window.loadLocalState();
+        initFirebaseAndAuth();
       }
 
       if (
