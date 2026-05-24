@@ -336,13 +336,19 @@
           ?
         </div>
         <div class="flex flex-col min-w-0 flex-1">
-          <div class="flex items-center gap-2 group/name cursor-pointer" onclick="enableNameEditing(event)">
+          <div
+            class="flex items-center gap-2 group/name cursor-pointer"
+            onclick="enableNameEditing(event)"
+          >
             <span
               id="user-display-name"
               class="font-bold text-neutral-800 dark:text-neutral-200 truncate"
               >Connecting...</span
             >
-            <i data-lucide="edit-2" class="w-3 h-3 text-neutral-400 hover:text-indigo-500 transition-colors"></i>
+            <i
+              data-lucide="edit-2"
+              class="w-3 h-3 text-neutral-400 hover:text-indigo-500 transition-colors"
+            ></i>
           </div>
           <input
             id="user-display-name-input"
@@ -351,7 +357,16 @@
             onblur="saveNewName()"
             onkeydown="handleNameKeydown(event)"
           />
-          <span class="text-[9px] text-neutral-500 font-mono tracking-tight break-all" id="user-full-id">Collaborative Mode</span>
+          <span
+            class="text-[10px] text-teal-500 font-bold tracking-tight"
+            id="user-share-code"
+            >Share Code: ------</span
+          >
+          <span
+            class="text-[8px] text-neutral-500 font-mono tracking-tight break-all"
+            id="user-full-id"
+            >Collaborative Mode</span
+          >
         </div>
       </div>
 
@@ -515,21 +530,22 @@
           Collaborate
         </h2>
         <p class="text-xs text-neutral-500 mb-4 font-sans">
-          Search for anyone using this app to share this specific notebook.
+          Enter a collaborator's 6-digit Share Code to share this notebook.
         </p>
 
         <div class="flex gap-2 mb-4 relative">
           <input
             type="text"
             id="user-search-input"
-            placeholder="Search by name or ID..."
+            placeholder="Enter 6-digit Share Code..."
+            maxlength="6"
             class="w-full px-3 py-2.5 rounded-lg bg-neutral-100 dark:bg-[#1c1c1c] dark:text-white border-none outline-none text-sm placeholder-neutral-400 font-sans"
           />
           <button
             onclick="searchUsers()"
             class="px-4 py-2.5 bg-indigo-500 text-white rounded-lg text-sm font-medium hover:bg-indigo-600 transition-colors font-sans font-bold"
           >
-            Search
+            Find
           </button>
         </div>
 
@@ -613,7 +629,8 @@
       };
 
       // Safely fetch app details from environment parameters
-      const parsedAppId = typeof __app_id !== "undefined" ? __app_id : "default-app-id";
+      const parsedAppId =
+        typeof __app_id !== "undefined" ? __app_id : "default-app-id";
       const appId = parsedAppId;
 
       let firebaseConfig = null;
@@ -625,21 +642,28 @@
         }
       }
 
-      if (!firebaseConfig && myFirebaseConfig.apiKey && myFirebaseConfig.apiKey !== "YOUR_API_KEY_HERE") {
+      if (
+        !firebaseConfig &&
+        myFirebaseConfig.apiKey &&
+        myFirebaseConfig.apiKey !== "YOUR_API_KEY_HERE"
+      ) {
         firebaseConfig = myFirebaseConfig;
       }
 
       // Track configuration status safely across modules
       const isConfigValid = firebaseConfig !== null;
 
-      let app = null, auth = null, db = null;
+      let app = null,
+        auth = null,
+        db = null;
       let currentUser = null;
       let isSyncingFromCloud = false;
       let authInitialized = false; // Tracks if we have already kicked off an authentication attempt
       let isAuthReady = false; // Tracks if we are fully authed and ready for Firestore queries
       let unsubscribeActiveNotebook = null;
       let unsubscribeAllNotebooks = null;
-      let activeNotebookId = localStorage.getItem("canvas_active_notebook_id") || "default-nb";
+      let activeNotebookId =
+        localStorage.getItem("canvas_active_notebook_id") || "default-nb";
 
       // Standalone fallback database
       let notebooks = JSON.parse(localStorage.getItem("canvas_notebooks")) || [
@@ -668,12 +692,21 @@
         notebooksList: [],
       });
 
+      // Generate or retrieve persistent 6-digit Share Code
+      let myShareCode = localStorage.getItem("slate_user_share_code");
+      if (!myShareCode) {
+        myShareCode = Math.floor(100000 + Math.random() * 900000).toString();
+        localStorage.setItem("slate_user_share_code", myShareCode);
+      }
+
       // ==========================================
       // FIREBASE & AUTH INITIALIZATION PROTOCOL
       // ==========================================
       const initFirebaseAndAuth = async () => {
         if (!firebaseConfig) {
-          console.warn("No Firebase configuration available. Running in offline fallback mode.");
+          console.warn(
+            "No Firebase configuration available. Running in offline fallback mode."
+          );
           updateCloudStatus("Offline Mode");
           loadStandaloneState();
           return;
@@ -701,7 +734,10 @@
             if (!user && !authInitialized) {
               authInitialized = true;
               try {
-                if (typeof __initial_auth_token !== "undefined" && __initial_auth_token) {
+                if (
+                  typeof __initial_auth_token !== "undefined" &&
+                  __initial_auth_token
+                ) {
                   await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
                   await signInAnonymously(auth);
@@ -727,41 +763,79 @@
                 ? "Guest"
                 : user.displayName || `User ${user.uid.substring(0, 4)}`;
 
-              // Read name from database standard user directories so custom settings aren't lost (Rule 1 paths)
-              const userRef = doc(db, "artifacts", appId, "public", "data", "users", user.uid);
+              // Aligned with save.html using robust public profiles collection
+              const userRef = doc(
+                db,
+                "artifacts",
+                appId,
+                "public",
+                "data",
+                "profiles",
+                user.uid
+              );
+              const shareCodeRef = doc(
+                db,
+                "artifacts",
+                appId,
+                "public",
+                "data",
+                "shareCodes",
+                myShareCode
+              );
+
               try {
                 const userSnap = await getDoc(userRef);
                 if (userSnap.exists()) {
                   const userData = userSnap.data();
-                  if (userData.name) {
-                    displayName = userData.name;
+                  if (userData.displayName || userData.name) {
+                    displayName = userData.displayName || userData.name;
                   }
-                } else {
-                  // Register new directory profile
-                  await setDoc(
-                    userRef,
-                    {
-                      uid: user.uid,
-                      name: displayName,
-                      email: isAnon ? "Anonymous Guest" : user.email || "Google Account",
-                      lastActive: Date.now(),
-                    },
-                    { merge: true }
-                  );
                 }
+
+                // Write/update standard user directory profile unconditionally to keep search indexed
+                await setDoc(
+                  userRef,
+                  {
+                    uid: user.uid,
+                    name: displayName,
+                    displayName: displayName, // Supports both structures
+                    shareCode: myShareCode,
+                    email: isAnon
+                      ? "Anonymous Guest"
+                      : user.email || "Google Account",
+                    lastActive: Date.now(),
+                  },
+                  { merge: true }
+                );
+
+                // Register reverse lookup for search mapping
+                await setDoc(shareCodeRef, { uid: user.uid }, { merge: true });
               } catch (e) {
-                console.error("Failed to fetch/register profile from directory", e);
+                console.error(
+                  "Failed to fetch/register profile from directory",
+                  e
+                );
               }
 
               state.userName = displayName || "Guest"; // Track name dynamically inside Canvas memory
 
-              document.getElementById("user-display-name").innerText = state.userName;
-              document.getElementById("user-full-id").innerText = `ID: ${user.uid}`;
-              document.getElementById("user-avatar").innerText = state.userName.charAt(0).toUpperCase();
+              document.getElementById("user-display-name").innerText =
+                state.userName;
+              document.getElementById(
+                "user-full-id"
+              ).innerText = `UID: ${user.uid}`;
+              document.getElementById(
+                "user-share-code"
+              ).innerText = `Share Code: ${myShareCode}`;
+              document.getElementById("user-avatar").innerText = state.userName
+                .charAt(0)
+                .toUpperCase();
 
               const authText = document.getElementById("auth-text");
               if (authText) {
-                authText.innerText = isAnon ? "Sign in with Google" : "Sign Out";
+                authText.innerText = isAnon
+                  ? "Sign in with Google"
+                  : "Sign Out";
               }
 
               // Initialize real-time synchronization listeners
@@ -772,7 +846,6 @@
               loadStandaloneState();
             }
           });
-
         } catch (err) {
           console.error("Could not bootstrap Firebase instance context.", err);
           updateCloudStatus("Offline Mode (Error)");
@@ -783,32 +856,52 @@
       // --- EDIT/SAVE USER DISPLAY NAME ---
       window.enableNameEditing = (event) => {
         if (event) event.stopPropagation();
-        const displayLabel = document.getElementById("user-display-name").parentElement;
+        const displayLabel =
+          document.getElementById("user-display-name").parentElement;
         const inputField = document.getElementById("user-display-name-input");
-        
+
         displayLabel.classList.add("hidden");
         inputField.classList.remove("hidden");
-        inputField.value = document.getElementById("user-display-name").innerText;
+        inputField.value =
+          document.getElementById("user-display-name").innerText;
         inputField.focus();
         inputField.select();
       };
 
       window.saveNewName = async () => {
-        const displayLabel = document.getElementById("user-display-name").parentElement;
+        const displayLabel =
+          document.getElementById("user-display-name").parentElement;
         const inputField = document.getElementById("user-display-name-input");
         const newName = inputField.value.trim();
 
-        if (newName && newName !== document.getElementById("user-display-name").innerText) {
+        if (
+          newName &&
+          newName !== document.getElementById("user-display-name").innerText
+        ) {
           const oldName = state.userName;
           document.getElementById("user-display-name").innerText = newName;
-          document.getElementById("user-avatar").innerText = newName.charAt(0).toUpperCase();
+          document.getElementById("user-avatar").innerText = newName
+            .charAt(0)
+            .toUpperCase();
           state.userName = newName;
 
           if (db && isAuthReady && currentUser) {
             // Write standard user directory update back to Firestore (Rule 1 paths)
-            const userRef = doc(db, "artifacts", appId, "public", "data", "users", currentUser.uid);
+            const userRef = doc(
+              db,
+              "artifacts",
+              appId,
+              "public",
+              "data",
+              "profiles",
+              currentUser.uid
+            );
             try {
-              await setDoc(userRef, { name: newName, lastActive: Date.now() }, { merge: true });
+              await setDoc(
+                userRef,
+                { name: newName, displayName: newName, lastActive: Date.now() },
+                { merge: true }
+              );
               showToast("Name saved to cloud profile!");
             } catch (err) {
               console.error("Could not update name in database", err);
@@ -819,8 +912,12 @@
           }
 
           // Dynamically change author on any note blocks contributed by you in active session
-          state.blocks.forEach(block => {
-            if (block.authorName === oldName || block.authorName === "Guest" || !block.authorName) {
+          state.blocks.forEach((block) => {
+            if (
+              block.authorName === oldName ||
+              block.authorName === "Guest" ||
+              !block.authorName
+            ) {
               block.authorName = newName;
             }
           });
@@ -835,7 +932,8 @@
         if (event.key === "Enter") {
           saveNewName();
         } else if (event.key === "Escape") {
-          const displayLabel = document.getElementById("user-display-name").parentElement;
+          const displayLabel =
+            document.getElementById("user-display-name").parentElement;
           const inputField = document.getElementById("user-display-name-input");
           inputField.classList.add("hidden");
           displayLabel.classList.remove("hidden");
@@ -869,16 +967,23 @@
               showToast(`Signed in as ${result.user.displayName}`);
             })
             .catch((err) => {
-              console.warn("Popup blocked or not supported. Using redirection logic instead...", err);
+              console.warn(
+                "Popup blocked or not supported. Using redirection logic instead...",
+                err
+              );
               if (
                 err.code === "auth/popup-blocked" ||
                 err.code === "auth/operation-not-supported-in-this-environment"
               ) {
                 signInWithRedirect(auth, provider).catch((redirectErr) => {
-                  showToast("Sign in redirection failure: " + redirectErr.message);
+                  showToast(
+                    "Sign in redirection failure: " + redirectErr.message
+                  );
                 });
               } else {
-                showToast("Authentication cancelled or interrupted: " + err.message);
+                showToast(
+                  "Authentication cancelled or interrupted: " + err.message
+                );
               }
             });
         }
@@ -895,7 +1000,14 @@
         }
 
         // Rule 1 & Rule 2: Strict path format & simple collection fetch
-        const nbColRef = collection(db, "artifacts", appId, "public", "data", "notebooks");
+        const nbColRef = collection(
+          db,
+          "artifacts",
+          appId,
+          "public",
+          "data",
+          "notebooks"
+        );
 
         unsubscribeAllNotebooks = onSnapshot(
           nbColRef,
@@ -904,7 +1016,9 @@
             snapshot.forEach((docSnap) => {
               const data = docSnap.data();
               const isOwner = data.owner === currentUser.uid;
-              const isCollab = data.collaborators && data.collaborators.includes(currentUser.uid);
+              const isCollab =
+                data.collaborators &&
+                data.collaborators.includes(currentUser.uid);
               // Filter notebooks in-memory on the client (Rule 2 requirement)
               if (isOwner || isCollab) {
                 available.push({ id: docSnap.id, ...data });
@@ -914,10 +1028,16 @@
             state.notebooksList = available;
 
             if (available.length === 0) {
-              window.createNewNotebook("Main Sketchbook", "adaptive", "default-nb");
+              window.createNewNotebook(
+                "Main Sketchbook",
+                "adaptive",
+                `default-nb-${currentUser.uid}`
+              );
             } else {
               // Validate if active notebook exists in refreshed list
-              const existingNb = available.find((n) => n.id === activeNotebookId);
+              const existingNb = available.find(
+                (n) => n.id === activeNotebookId
+              );
               if (!existingNb) {
                 switchNotebook(available[0].id);
               } else {
@@ -929,7 +1049,10 @@
             }
           },
           (err) => {
-            console.error("Could not fetch authorized notebooks list stream.", err);
+            console.error(
+              "Could not fetch authorized notebooks list stream.",
+              err
+            );
           }
         );
       }
@@ -949,7 +1072,15 @@
 
         if (db && isAuthReady && currentUser) {
           // Rule 1 Compliance: Strict path format
-          const nbDocRef = doc(db, "artifacts", appId, "public", "data", "notebooks", id);
+          const nbDocRef = doc(
+            db,
+            "artifacts",
+            appId,
+            "public",
+            "data",
+            "notebooks",
+            id
+          );
 
           unsubscribeActiveNotebook = onSnapshot(
             nbDocRef,
@@ -965,7 +1096,11 @@
 
                 if (getActiveNotebookType() === "document") {
                   const wp = document.getElementById("word-processor");
-                  if (wp && wp.value !== state.documentText && document.activeElement !== wp) {
+                  if (
+                    wp &&
+                    wp.value !== state.documentText &&
+                    document.activeElement !== wp
+                  ) {
                     wp.value = state.documentText;
                     adjustWordProcessorHeight();
                   }
@@ -1002,14 +1137,25 @@
           ambientOn: state.ambientOn,
           documentText: state.documentText,
         };
-        localStorage.setItem(`canvas_data_${activeNotebookId}`, JSON.stringify(localData));
+        localStorage.setItem(
+          `canvas_data_${activeNotebookId}`,
+          JSON.stringify(localData)
+        );
 
         if (!currentUser || !db || !isAuthReady || isSyncingFromCloud) return;
 
         isSyncingFromCloud = true;
 
         // Rule 1: Strict path storage
-        const nbDocRef = doc(db, "artifacts", appId, "public", "data", "notebooks", activeNotebookId);
+        const nbDocRef = doc(
+          db,
+          "artifacts",
+          appId,
+          "public",
+          "data",
+          "notebooks",
+          activeNotebookId
+        );
         setDoc(
           nbDocRef,
           {
@@ -1042,11 +1188,19 @@
           "Untitled Notebook";
         const type =
           typeOverride || document.getElementById("new-notebook-type").value;
-        const newId = idOverride || `nb_${Date.now()}`;
+        const newId = idOverride || `nb_${currentUser.uid}_${Date.now()}`;
 
         if (db && isAuthReady && currentUser) {
           // Rule 1: Strict path formatting
-          const nbDocRef = doc(db, "artifacts", appId, "public", "data", "notebooks", newId);
+          const nbDocRef = doc(
+            db,
+            "artifacts",
+            appId,
+            "public",
+            "data",
+            "notebooks",
+            newId
+          );
           try {
             await setDoc(nbDocRef, {
               name: name,
@@ -1059,9 +1213,19 @@
               createdAt: Date.now(),
             });
             switchNotebook(newId);
+            showToast("Notebook Created!");
           } catch (e) {
-            console.error("Failed to create cloud notebook documentation", e);
-            showToast("Failed to create notebook on server.");
+            console.error(
+              "Failed to create cloud notebook documentation, attempting local setup",
+              e
+            );
+
+            // Automatic Fallback Local Setup to prevent blocking user
+            const newLocalNb = { id: newId, name: name, type: type };
+            notebooks.push(newLocalNb);
+            localStorage.setItem("canvas_notebooks", JSON.stringify(notebooks));
+            switchNotebook(newId);
+            showToast("Created locally (cloud write restricted).");
           }
         } else {
           // Offline fallback storage handling
@@ -1069,31 +1233,37 @@
           notebooks.push(newLocalNb);
           localStorage.setItem("canvas_notebooks", JSON.stringify(notebooks));
           switchNotebook(newId);
+          showToast("Notebook Created!");
         }
 
         if (nameInput) nameInput.value = "";
-        showToast("Notebook Created!");
       };
 
       // Helper function to render a single user search item safely
-      function renderSearchResultItem(container, user, uid, isSelf, currentCollabs) {
-        const isShared = currentCollabs.includes(uid);
+      function renderSearchResultItem(
+        container,
+        user,
+        shareCode,
+        isSelf,
+        currentCollabs
+      ) {
+        const isShared = currentCollabs.includes(user.uid);
         const el = document.createElement("div");
         el.className =
-          "flex items-center justify-between p-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md border border-neutral-100 dark:border-neutral-800/50";
-        
+          "flex items-center justify-between p-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md border border-neutral-100 dark:border-neutral-800/50 animate-in fade-in duration-250";
+
         let actionBtnHtml = "";
         if (isSelf) {
           actionBtnHtml = `<span class="px-2 py-1 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-500 text-[9px] rounded-md font-sans font-bold uppercase tracking-wider flex-shrink-0">You</span>`;
         } else {
           actionBtnHtml = `
-            <button onclick="shareNotebookWith('${uid}')" class="px-3 py-1.5 flex-shrink-0 ${
-              isShared
-                ? "bg-emerald-500/20 text-emerald-600"
-                : "bg-indigo-500 text-white hover:bg-indigo-600"
-            } text-[10px] rounded-md transition-colors font-sans font-bold uppercase tracking-wider" ${
-              isShared ? "disabled" : ""
-            }>
+            <button onclick="shareNotebookWith('${shareCode}')" class="px-3 py-1.5 flex-shrink-0 ${
+            isShared
+              ? "bg-emerald-500/20 text-emerald-600"
+              : "bg-indigo-500 text-white hover:bg-indigo-600"
+          } text-[10px] rounded-md transition-colors font-sans font-bold uppercase tracking-wider" ${
+            isShared ? "disabled" : ""
+          }>
                 ${isShared ? "Added" : "Add"}
             </button>
           `;
@@ -1101,8 +1271,10 @@
 
         el.innerHTML = `
           <div class="flex flex-col min-w-0 pr-2">
-              <span class="text-xs font-bold dark:text-white font-sans truncate">${user.name || "Anonymous User"}</span>
-              <span class="text-[9px] text-neutral-500 font-mono truncate">ID: ${uid}</span>
+              <span class="text-xs font-bold dark:text-white font-sans truncate">${
+                user.displayName || user.name || "Anonymous User"
+              }</span>
+              <span class="text-[9px] text-neutral-500 font-mono truncate">Code: ${shareCode}</span>
           </div>
           ${actionBtnHtml}
         `;
@@ -1111,101 +1283,136 @@
       window.renderSearchResultItem = renderSearchResultItem;
 
       // --- DIRECTORY COLLABORATION SEARCH ---
+      // Search outside of Sandbox: Direct share code query lookup (no collection listing is allowed by rules outside sandbox)
       window.searchUsers = async () => {
         if (!db || !isAuthReady) {
           showToast("Search is offline. Cloud capabilities are unavailable.");
           return;
         }
         const queryInput = document.getElementById("user-search-input");
-        const query = queryInput ? queryInput.value.toLowerCase().trim() : "";
+        const query = queryInput ? queryInput.value.trim() : "";
         const resultsBox = document.getElementById("user-search-results");
 
-        resultsBox.innerHTML = '<p class="text-xs text-neutral-500 p-2 font-sans">Searching directory...</p>';
+        resultsBox.innerHTML =
+          '<p class="text-xs text-neutral-500 p-2 font-sans">Searching...</p>';
         resultsBox.classList.remove("hidden");
 
-        const usersRef = collection(db, "artifacts", appId, "public", "data", "users");
+        if (query.length !== 6 || isNaN(query)) {
+          resultsBox.innerHTML =
+            '<p class="text-xs text-neutral-400 p-2 font-sans">Please enter a valid 6-digit Share Code.</p>';
+          return;
+        }
 
         try {
-          // Rule 2 Compliance: Fetch plain list of users from directory, then filter inside client memory.
-          const snap = await getDocs(usersRef);
-          resultsBox.innerHTML = "";
-          let found = false;
+          // Direct lookup document fetch path (Rule 2 compliant: works outside sandbox)
+          const shareCodeRef = doc(
+            db,
+            "artifacts",
+            appId,
+            "public",
+            "data",
+            "shareCodes",
+            query
+          );
+          const codeSnap = await getDoc(shareCodeRef);
 
-          const activeNb = state.notebooksList.find((n) => n.id === activeNotebookId);
-          const currentCollabs = activeNb ? activeNb.collaborators || [] : [];
+          if (codeSnap.exists()) {
+            const targetUid = codeSnap.data().uid;
+            const profileRef = doc(
+              db,
+              "artifacts",
+              appId,
+              "public",
+              "data",
+              "profiles",
+              targetUid
+            );
+            const profileSnap = await getDoc(profileRef);
 
-          snap.forEach((docSnap) => {
-            const user = docSnap.data();
-            const uid = docSnap.id;
-            const isSelf = uid === currentUser?.uid;
-
-            const name = (user.name || "").toLowerCase();
-            const email = (user.email || "").toLowerCase();
-            const idMatch = uid.toLowerCase();
-
-            // Display matches or list everyone if search is empty
-            if (
-              !query ||
-              name.includes(query) ||
-              email.includes(query) ||
-              idMatch.includes(query)
-            ) {
-              found = true;
-              renderSearchResultItem(resultsBox, user, uid, isSelf, currentCollabs);
-            }
-          });
-          if (!found) {
-            resultsBox.innerHTML = `<p class="text-xs text-neutral-500 p-2 font-sans">No other users match your search.</p>`;
-          }
-        } catch (err) {
-          console.warn("Listing users collection directly failed. Using robust individual fetch lookup fallback...", err);
-          // Fallback: If listing directory collection is forbidden, retrieve direct ID document safely
-          if (query.length >= 10) {
-            try {
-              const directDocRef = doc(db, "artifacts", appId, "public", "data", "users", query);
-              const docSnap = await getDoc(directDocRef);
+            if (profileSnap.exists()) {
               resultsBox.innerHTML = "";
-              if (docSnap.exists()) {
-                const user = docSnap.data();
-                const uid = docSnap.id;
-                const isSelf = uid === currentUser?.uid;
-                const activeNb = state.notebooksList.find((n) => n.id === activeNotebookId);
-                const currentCollabs = activeNb ? activeNb.collaborators || [] : [];
-                renderSearchResultItem(resultsBox, user, uid, isSelf, currentCollabs);
-              } else {
-                resultsBox.innerHTML = `<p class="text-xs text-neutral-500 p-2 font-sans">No user found with ID: ${query}</p>`;
-              }
-            } catch (fallbackErr) {
-              console.error("Direct fetch search fallback failed", fallbackErr);
-              resultsBox.innerHTML = `<p class="text-xs text-rose-500 p-2 font-sans font-medium">Error loading profile query.</p>`;
+              const targetUser = profileSnap.data();
+              const isSelf = targetUid === currentUser?.uid;
+              const activeNb = state.notebooksList.find(
+                (n) => n.id === activeNotebookId
+              );
+              const currentCollabs = activeNb
+                ? activeNb.collaborators || []
+                : [];
+
+              renderSearchResultItem(
+                resultsBox,
+                targetUser,
+                query,
+                isSelf,
+                currentCollabs
+              );
+            } else {
+              resultsBox.innerHTML =
+                '<p class="text-xs text-neutral-500 p-2 font-sans">Profile metadata missing on server.</p>';
             }
           } else {
-            resultsBox.innerHTML = `<p class="text-[10px] text-neutral-500 p-2 font-sans leading-normal">Enter a full User ID to search directly (profile directory listing is restricted).</p>`;
+            resultsBox.innerHTML =
+              '<p class="text-xs text-neutral-500 p-2 font-sans">No user found with this 6-digit Share Code.</p>';
           }
+        } catch (err) {
+          console.error("Search fetch query block occurred", err);
+          resultsBox.innerHTML =
+            '<p class="text-xs text-rose-500 p-2 font-sans">Error loading profile query.</p>';
         }
       };
 
-      window.shareNotebookWith = async (targetUid) => {
+      window.shareNotebookWith = async (shareCode) => {
         if (!db || !isAuthReady || !currentUser) return;
-        const nbDocRef = doc(db, "artifacts", appId, "public", "data", "notebooks", activeNotebookId);
-        const activeNb = state.notebooksList.find((n) => n.id === activeNotebookId);
+        const nbDocRef = doc(
+          db,
+          "artifacts",
+          appId,
+          "public",
+          "data",
+          "notebooks",
+          activeNotebookId
+        );
+        const activeNb = state.notebooksList.find(
+          (n) => n.id === activeNotebookId
+        );
 
         if (activeNb && activeNb.owner !== currentUser.uid) {
           showToast("Only the owner can add collaborators.");
           return;
         }
 
-        const currentCollabs = activeNb ? activeNb.collaborators || [] : [];
-        if (!currentCollabs.includes(targetUid)) {
-          currentCollabs.push(targetUid);
-          try {
-            await updateDoc(nbDocRef, { collaborators: currentCollabs });
-            showToast("User added successfully!");
-            searchUsers();
-          } catch (e) {
-            console.error("Failed to share notebook document with target user", e);
-            showToast("Failed to share notebook.");
+        try {
+          const shareCodeRef = doc(
+            db,
+            "artifacts",
+            appId,
+            "public",
+            "data",
+            "shareCodes",
+            shareCode
+          );
+          const codeSnap = await getDoc(shareCodeRef);
+
+          if (!codeSnap.exists()) {
+            showToast("Invalid Share Code.");
+            return;
           }
+
+          const targetUid = codeSnap.data().uid;
+          const currentCollabs = activeNb ? activeNb.collaborators || [] : [];
+
+          if (!currentCollabs.includes(targetUid)) {
+            currentCollabs.push(targetUid);
+            await updateDoc(nbDocRef, { collaborators: currentCollabs });
+            showToast("Collaborator added successfully!");
+            searchUsers();
+          } else {
+            showToast("Already shared with this user.");
+          }
+        } catch (e) {
+          console.error("Failed to share notebook", e);
+          showToast("Failed to share notebook on server.");
         }
       };
 
@@ -1220,23 +1427,32 @@
           return;
         }
 
-        list.innerHTML = '<p class="text-[10px] text-neutral-400 p-2 text-center font-sans">Loading editors...</p>';
-        
+        list.innerHTML =
+          '<p class="text-[10px] text-neutral-400 p-2 text-center font-sans">Loading editors...</p>';
+
         // Robust fetch: read individual documents directly in parallel instead of reading whole directory collection snapshot
         let renderedCount = 0;
         const profileElements = [];
 
         collaboratorUids.forEach(async (uid) => {
           try {
-            const uDocRef = doc(db, "artifacts", appId, "public", "data", "users", uid);
+            const uDocRef = doc(
+              db,
+              "artifacts",
+              appId,
+              "public",
+              "data",
+              "profiles",
+              uid
+            );
             const uSnap = await getDoc(uDocRef);
             renderedCount++;
 
             if (uSnap.exists()) {
               const user = uSnap.data();
               profileElements.push({
-                name: user.name || "Anonymous User",
-                uid: uid
+                name: user.displayName || user.name || "Anonymous User",
+                uid: uid,
               });
             }
 
@@ -1263,9 +1479,15 @@
               lucide.createIcons();
             }
           } catch (err) {
-            console.error("Collaborator profile doc load restriction on profile " + uid, err);
+            console.error(
+              "Collaborator profile doc load restriction on profile " + uid,
+              err
+            );
             renderedCount++;
-            if (renderedCount === collaboratorUids.length && list.innerHTML.includes("Loading")) {
+            if (
+              renderedCount === collaboratorUids.length &&
+              list.innerHTML.includes("Loading")
+            ) {
               list.innerHTML = `<p class="text-[10px] text-neutral-500 italic p-2 border border-dashed border-neutral-300 dark:border-neutral-800 rounded-lg text-center font-sans">Only you have access to this notebook.</p>`;
             }
           }
@@ -1278,7 +1500,9 @@
           const active = notebooks.find((nb) => nb.id === activeNotebookId);
           return active ? active.type || "adaptive" : "adaptive";
         }
-        const active = state.notebooksList.find((nb) => nb.id === activeNotebookId);
+        const active = state.notebooksList.find(
+          (nb) => nb.id === activeNotebookId
+        );
         return active ? active.type || "adaptive" : "adaptive";
       }
 
@@ -1308,7 +1532,8 @@
           }`;
 
           const header = document.createElement("div");
-          header.className = "flex items-center justify-between pointer-events-none";
+          header.className =
+            "flex items-center justify-between pointer-events-none";
 
           const title = document.createElement("span");
           title.className = `font-bold text-sm ${
@@ -1319,7 +1544,8 @@
           title.innerText = nb.name;
 
           const badge = document.createElement("span");
-          badge.className = "text-[9px] px-1.5 py-0.5 rounded uppercase font-bold tracking-wider flex-shrink-0 ml-2";
+          badge.className =
+            "text-[9px] px-1.5 py-0.5 rounded uppercase font-bold tracking-wider flex-shrink-0 ml-2";
           const type = nb.type || "adaptive";
           if (type === "document") {
             badge.innerText = "Page Doc";
@@ -1338,7 +1564,8 @@
 
           if (nb.owner && nb.owner !== currentUser?.uid) {
             const sharedBadge = document.createElement("div");
-            sharedBadge.className = "text-[9px] text-emerald-500 font-medium flex items-center gap-1 mt-1 font-sans";
+            sharedBadge.className =
+              "text-[9px] text-emerald-500 font-medium flex items-center gap-1 mt-1 font-sans";
             sharedBadge.innerHTML = `<i data-lucide="users" class="w-3.5 h-3.5"></i> Shared notebook`;
             item.appendChild(sharedBadge);
           }
@@ -1592,7 +1819,10 @@
         exportCanvas.width = workspace.clientWidth;
         exportCanvas.height = 1200; // Target reasonable export zone
         const exCtx = exportCanvas.getContext("2d");
-        exCtx.fillStyle = document.body.classList.contains("dark") || true ? "#1c1c1c" : "#ffffff";
+        exCtx.fillStyle =
+          document.body.classList.contains("dark") || true
+            ? "#1c1c1c"
+            : "#ffffff";
         exCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
         state.drawings.forEach((p) => drawSinglePath(exCtx, p));
 
