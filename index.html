@@ -246,6 +246,30 @@
         </div>
     </div>
 
+    <!-- Windows App Promo Modal -->
+    <div id="windows-promo-modal" class="hidden fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center transition-opacity">
+        <div class="bg-white dark:bg-[#121212] w-full max-w-sm rounded-2xl p-6 shadow-2xl border border-neutral-200/60 dark:border-neutral-800/60 relative text-center">
+            <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i data-lucide="monitor" class="w-6 h-6"></i>
+            </div>
+            <h2 class="text-xl font-serif mb-2 dark:text-neutral-200">Get Slate for Windows</h2>
+            <p class="text-sm text-neutral-600 dark:text-neutral-400 mb-6 font-sans">
+                Experience more upcoming features and better performance with our native desktop app.
+            </p>
+            <div class="flex flex-col gap-3">
+                <a href="https://apps.microsoft.com/detail/9nrgz3wz4lmn" target="_blank" onclick="dismissWindowsPromo()" class="w-full py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm inline-block text-center decoration-none">
+                    Download from Microsoft Store
+                </a>
+                <button onclick="dismissWindowsPromo()" class="w-full py-2.5 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg text-sm font-medium transition-colors">
+                    Maybe Later
+                </button>
+            </div>
+            <button onclick="dismissWindowsPromo()" class="absolute top-5 right-5 text-neutral-400 hover:text-neutral-800 dark:hover:text-white transition-colors">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+        </div>
+    </div>
+
     <!-- Small instructions helper in corner -->
     <div class="fixed top-6 right-6 opacity-30 hover:opacity-100 transition-opacity text-[10px] tracking-widest uppercase flex items-center gap-2 z-40 pointer-events-none">
         <span id="instruction-txt">Right-click for options</span>
@@ -515,7 +539,7 @@
             if (type === 'document') return; 
             if (!state.sketchMode) return;
             
-            if (e.target.closest('button') || e.target.closest('input') || e.target.closest('#custom-context-menu') || e.target.closest('#sketch-toolbar') || e.target.closest('#notebook-modal')) {
+            if (e.target.closest('button') || e.target.closest('input') || e.target.closest('#custom-context-menu') || e.target.closest('#sketch-toolbar') || e.target.closest('#notebook-modal') || e.target.closest('#windows-promo-modal')) {
                 return;
             }
 
@@ -1252,6 +1276,29 @@
             }
         }
 
+        // --- Windows Promotion Logic ---
+        function checkWindowsOS() {
+            // Very simple OS detection via userAgent
+            const isWindows = navigator.userAgent.toLowerCase().includes('windows');
+            const hasSeenPromo = localStorage.getItem('slate_windows_promo_dismissed');
+            
+            if (isWindows && !hasSeenPromo) {
+                // Short delay so the pop-up isn't jarring on immediate page load
+                setTimeout(() => {
+                    const modal = document.getElementById('windows-promo-modal');
+                    if(modal) {
+                        modal.classList.remove('hidden');
+                        lucide.createIcons();
+                    }
+                }, 1500); 
+            }
+        }
+
+        function dismissWindowsPromo() {
+            localStorage.setItem('slate_windows_promo_dismissed', 'true');
+            document.getElementById('windows-promo-modal').classList.add('hidden');
+        }
+
         // --- Custom Context Menu Operations ---
         const contextMenu = document.getElementById('custom-context-menu');
 
@@ -1693,6 +1740,7 @@
             sketchCanvas.height = 5000;
             loadLocalState();
             workspace.scrollTop = 0;
+            checkWindowsOS(); // Call promotion check on load
         }
     </script>
 </body>
